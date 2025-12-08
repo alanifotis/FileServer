@@ -1,0 +1,18 @@
+#!/usr/bin/bash
+# 1. Generate CA Key using ECDSA P-256 (instead of Ed25519)
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 -out ca.key
+
+# 2. Generate CA Certificate
+openssl req -x509 -new -key ca.key -out ca.pem -config ca.cfg -days 3650
+
+# 3. Generate Server Key (ECDSA P-256)
+openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 -out server.key
+
+# 4. Generate CSR
+openssl req -new -key server.key -out server.csr -config server.cfg
+
+# 5. Sign it with the NEW ECDSA CA
+openssl x509 -req -in server.csr -CA ca.pem -CAkey ca.key -CAcreateserial -out server.pem -days 365 -extfile server.cfg -extensions server_cert
+
+# 5. Create the keystore for Spring Boot.
+openssl pkcs12 -export -in server.pem -inkey server.key -out server.p12 -name boot-server -passout pass:CHANGEIT
