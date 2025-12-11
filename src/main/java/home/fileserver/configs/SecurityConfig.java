@@ -30,6 +30,7 @@ class SecurityConfiguration {
         "/",
         "/login",
         "/register",
+        "/install-cert",
         "/favicon.ico", 
         "/index.html", 
         "/css/**",

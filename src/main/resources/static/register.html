@@ -1,20 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <link rel="stylesheet" href="/css/style.css">
     <title>Register</title>
 </head>
+
 <body>
     <main class="main-container">
         <div class="split-card">
-            
+
             <section class="info-panel">
                 <div class="info-content">
                     <h2>What is a Passkey?</h2>
-                    <p>Say goodbye to complicated passwords. A Passkey is a modern, secure way to sign in using the device you already have in your hand.</p>
-                    
+                    <p>Say goodbye to complicated passwords. A Passkey is a modern, secure way to sign in using the
+                        device you already have in your hand.</p>
+
                     <h3>How it works:</h3>
                     <ul>
                         <li>It uses your device's security (Face ID, Touch ID, or Windows Hello).</li>
@@ -23,7 +26,8 @@
                     </ul>
 
                     <div class="learn-more-wrapper">
-                        <a href="https://fidoalliance.org/passkeys/" target="_blank" rel="noopener noreferrer" class="learn-more-link">
+                        <a href="https://fidoalliance.org/passkeys/" target="_blank" rel="noopener noreferrer"
+                            class="learn-more-link">
                             Learn more about Passkeys →
                         </a>
                     </div>
@@ -37,17 +41,24 @@
                 </div>
 
                 <form id="registerForm" class="auth-form" novalidate>
-                    
+
                     <div class="form-group">
                         <label for="email">Email Address</label>
-                        <input type="email" id="email" name="email" placeholder="you@example.com" required autocomplete="username webauthn">
+                        <input type="email" id="email" name="email" placeholder="you@example.com" required
+                            autocomplete="username webauthn">
                         <span class="error-message" id="emailError"></span>
                     </div>
 
                     <div id="formFeedback" class="form-feedback hidden"></div>
 
                     <button type="submit" id="submitBtn" class="btn-primary">
-                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" class="fingerprint-icon"><path d="M12 12c0-3 2.5-3 3.5-3s3.5 0 3.5 3c0 3-2.5 3-3.5 3s-3.5 0-3.5-3"/><path d="M21 12c0 8-5 12-9 12s-9-4-9-12c0-8 5-12 9-12s9 4 9 12Z"/><path d="M9 12c0-1 2.5-1 3-1s3 0 3 1c0 1-2.5 1-3 1s-3 0-3-1"/></svg>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+                            stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                            class="fingerprint-icon">
+                            <path d="M12 12c0-3 2.5-3 3.5-3s3.5 0 3.5 3c0 3-2.5 3-3.5 3s-3.5 0-3.5-3" />
+                            <path d="M21 12c0 8-5 12-9 12s-9-4-9-12c0-8 5-12 9-12s9 4 9 12Z" />
+                            <path d="M9 12c0-1 2.5-1 3-1s3 0 3 1c0 1-2.5 1-3 1s-3 0-3-1" />
+                        </svg>
                         <span class="btn-text">Create Passkey</span>
                         <span class="spinner hidden"></span>
                     </button>
@@ -56,6 +67,12 @@
                 <div class="auth-footer">
                     <p>Already have an account? <a href="/login">Log In using Passkey</a></p>
                 </div>
+                <div class="cert-download" style="margin-top: 20px; font-size: 0.8rem; text-align: center;">
+                    <p>Having trouble with SSL warnings?</p>
+                    <a href="/install-cert" style="color: var(--text-muted); text-decoration: underline;">
+                        Download Root CA
+                    </a>
+                </div>
             </section>
 
         </div>
@@ -63,4 +80,5 @@
 
     <script src="/js/register.js"></script>
 </body>
+
 </html>
