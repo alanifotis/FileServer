@@ -2,8 +2,10 @@ package home.fileserver.configs;
 
 import javax.sql.DataSource;
 
+import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.ResponseCookie.ResponseCookieBuilder;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -21,27 +23,35 @@ import home.fileserver.utilities.SpaCsrfTokenRequestHandler;
 @Configuration
 // Only enable if there is already a passkey registered
 //@EnableMultiFactorAuthentication(
-//		authorities = { FactorGrantedAuthority.OTT_AUTHORITY, FactorGrantedAuthority.WEBAUTHN_AUTHORITY })
+//        authorities = { FactorGrantedAuthority.OTT_AUTHORITY, FactorGrantedAuthority.WEBAUTHN_AUTHORITY })
 class SecurityConfiguration {
+    private final String[] ALLOWED_PATHS = 
+    {
+        "/",
+        "/login",
+        "/register",
+        "/favicon.ico", 
+        "/index.html", 
+        "/css/**",
+        "/error",
+        "/js/**"
+    };
 
+    @Bean
+    SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
-	@Bean
-	SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
-		//@formatter:off
-		return http
-				.authorizeHttpRequests(auth -> {
-					auth.requestMatchers("/").permitAll();
-                    auth.requestMatchers("/login").permitAll();
-					auth.requestMatchers("/favicon.ico").permitAll();
-					auth.requestMatchers("/error").permitAll();
-					auth.anyRequest().authenticated();
-				})
+        return http
+                .redirectToHttps(withDefaults())
+                .authorizeHttpRequests(auth -> {
+                    auth.requestMatchers(ALLOWED_PATHS).permitAll();
+                    auth.anyRequest().authenticated();
+                })
                 .formLogin(withDefaults())
-				.webAuthn(passkeys -> {
-					passkeys.rpId("localhost");
-					passkeys.allowedOrigins("https://localhost:8443", "https://192.168.0.149:8443", "" );
-				})
-				.logout(logout -> logout.logoutSuccessUrl("/login"))
+                .webAuthn(passkeys -> {
+                    passkeys.rpId("localhost");
+                    passkeys.allowedOrigins("https://localhost:8443", "https://192.168.0.149:8443", "http://localhost:8080" );
+                })
+                .logout(logout -> logout.logoutSuccessUrl("/login"))
                 .csrf(csrf -> {
                     // Ignore CSRF so we do not have to deal with it in pure JS implementations.
                     // Avoid doing this, instead following Spring Security's recommendations for CSRF:
@@ -49,27 +59,31 @@ class SecurityConfiguration {
                     csrf.ignoringRequestMatchers("/webauthn/**", "/login/webauthn");
                     // Instead you should be doing this:
                     var repo = new CookieCsrfTokenRepository();
-                    repo.setCookieCustomizer(c -> c.httpOnly(false));
+                    repo.setCookieCustomizer(c -> 
+                        c.httpOnly(false)
+                        .sameSite("Lax")
+                        .build()
+
+                    );
                     csrf.csrfTokenRepository(repo);
                     csrf.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler());
                 })
-				.build();
-		//@formatter:on
-	}
+                .build();
+    }
 
-	@Bean
-	UserDetailsService userDetailsService(DataSource dataSource) {
-		return new JdbcUserDetailsManager(dataSource);
-	}
+    @Bean
+    UserDetailsService userDetailsService(DataSource dataSource) {
+        return new JdbcUserDetailsManager(dataSource);
+    }
 
-	@Bean
-	UserCredentialRepository passkeyRepo(JdbcOperations jdbcOperations) {
-		return new JdbcUserCredentialRepository(jdbcOperations);
-	}
+    @Bean
+    UserCredentialRepository passkeyRepo(JdbcOperations jdbcOperations) {
+        return new JdbcUserCredentialRepository(jdbcOperations);
+    }
 
-	@Bean
-	PublicKeyCredentialUserEntityRepository passkeyToUserRepo(JdbcOperations jdbcOperations) {
-		return new JdbcPublicKeyCredentialUserEntityRepository(jdbcOperations);
-	}
+    @Bean
+    PublicKeyCredentialUserEntityRepository passkeyToUserRepo(JdbcOperations jdbcOperations) {
+        return new JdbcPublicKeyCredentialUserEntityRepository(jdbcOperations);
+    }
 
 }
