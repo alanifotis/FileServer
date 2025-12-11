@@ -46,3 +46,4 @@ out/
 **/*.csr
 **/*.srl
 **/outline*
+gradlew*
