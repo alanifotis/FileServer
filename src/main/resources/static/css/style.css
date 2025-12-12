@@ -273,3 +273,17 @@ body {
     .info-panel { order: 2; } 
     */
 }
+
+.btn-primary:disabled {
+    opacity: 0.5;              /* Fades the button */
+    cursor: not-allowed;       /* Shows a 'stop' symbol on hover */
+    pointer-events: none;      /* Prevents clicking completely */
+    filter: grayscale(0.5);    /* Optional: Desaturates the color slightly */
+}
+
+/* In style.css */
+.form-feedback.warning {
+    color: #856404;
+    background-color: #fff3cd;
+    border: 1px solid #ffeeba;
+}

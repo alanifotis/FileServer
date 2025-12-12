@@ -5,12 +5,16 @@ import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
+import lombok.extern.log4j.Log4j2;
+
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
 @Controller
+@Log4j2
 public class RegisterController {
 
     @GetMapping("/register")
@@ -30,10 +34,10 @@ public class RegisterController {
         Resource file = new ClassPathResource("certs/ca.pem");
 
         try {
-            System.out.println("Looking for file at: " + file.getURI());
-            System.out.println("File exists? " + file.exists());
+            log.info("Looking for file at: {}", file.getURI());
+            log.info("File exists? {}",file.exists());
         } catch (Exception e) {
-            System.out.println("Could not resolve file path: " + e.getMessage());
+             log.error("Could not resolve file path: {}", e.getMessage());
         }
 
         if (!file.exists()) {
