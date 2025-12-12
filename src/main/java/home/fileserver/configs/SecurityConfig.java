@@ -2,10 +2,8 @@ package home.fileserver.configs;
 
 import javax.sql.DataSource;
 
-import org.springframework.boot.security.autoconfigure.web.servlet.PathRequest;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.http.ResponseCookie.ResponseCookieBuilder;
 import org.springframework.jdbc.core.JdbcOperations;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -38,6 +36,19 @@ class SecurityConfiguration {
         "/js/**"
     };
 
+    private final String[] ALLOWED_HOSTS = 
+    {
+        "https://localhost:8443",
+        "https://192.168.0.149:8443",
+        "http://localhost:8080",
+        "http://192.168.0.149:8080",
+        "https://192.168.0.149:80", 
+        "https://192.168.10.161:8443", 
+        "http://192.168.10.161:8080",
+    };
+
+    private final String RP_ID = "localhost";
+
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
 
@@ -49,8 +60,8 @@ class SecurityConfiguration {
                 })
                 .formLogin(withDefaults())
                 .webAuthn(passkeys -> {
-                    passkeys.rpId("localhost");
-                    passkeys.allowedOrigins("https://localhost:8443", "https://192.168.0.149:8443", "http://localhost:8080" );
+                    passkeys.rpId(RP_ID);
+                    passkeys.allowedOrigins(ALLOWED_HOSTS);
                 })
                 .logout(logout -> logout.logoutSuccessUrl("/login"))
                 .csrf(csrf -> {
