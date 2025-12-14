@@ -12,13 +12,25 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs;
+import org.springframework.security.web.webauthn.api.Bytes;
+import org.springframework.security.web.webauthn.api.COSEAlgorithmIdentifier;
+import org.springframework.security.web.webauthn.api.ImmutableAuthenticationExtensionsClientInputs;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions.PublicKeyCredentialCreationOptionsBuilder;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialType;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
+import java.io.Serializable;
 import java.net.URI;
+import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 
 @Controller
@@ -80,4 +92,16 @@ public class RegisterController {
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ca.pem\"")
                 .body(file);
     }
+
+public PublicKeyCredentialCreationOptions createRegistrationOptions(User user) {
+    
+
+    PublicKeyCredentialCreationOptions options = PublicKeyCredentialCreationOptions
+    .builder()
+    .rp(PublicKeyCredentialRpEntity.builder().id("FileServer").name("localhost").build())
+    .extensions(List.of(new ImmutableAuthenticationExtensionsClientInputs())
+    .build();    
+
+    return options;
+}
 }
