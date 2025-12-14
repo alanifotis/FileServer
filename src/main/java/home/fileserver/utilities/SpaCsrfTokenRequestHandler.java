@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.function.Supplier;
 
+import org.jspecify.annotations.NonNull;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
@@ -30,7 +31,7 @@ public final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler
 	}
 
 	@Override
-	public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken csrfToken) {
+	public String resolveCsrfTokenValue(HttpServletRequest request, @NonNull CsrfToken csrfToken) {
 		String headerValue = request.getHeader("x-csrf");
 		/*
 		 * If the request contains a request header, use CsrfTokenRequestAttributeHandler

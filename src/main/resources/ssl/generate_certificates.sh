@@ -27,7 +27,7 @@ function log {
 
 # --- Important Configurations ---
 DOMAIN="localhost"
-PASSWORD="@Work2025"
+PASSWORD="FileServer@Home"
 ORG_NAME="Unemployed GmbH"
 CA_COMMON_NAME="LocalDevRootCA"
 

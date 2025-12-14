@@ -17,6 +17,7 @@ import org.springframework.security.web.webauthn.management.UserCredentialReposi
 import static org.springframework.security.config.Customizer.withDefaults;
 
 import home.fileserver.utilities.SpaCsrfTokenRequestHandler;
+import home.fileserver.repositories.CustomPublicKeyCredentialCreationOptionsRepository;
 
 @Configuration
 // Only enable if there is already a passkey registered
@@ -62,6 +63,7 @@ class SecurityConfiguration {
                 .webAuthn(passkeys -> {
                     passkeys.rpId(RP_ID);
                     passkeys.allowedOrigins(ALLOWED_HOSTS);
+                    passkeys.creationOptionsRepository(creationOptionsRepository());
                 })
                 .logout(logout -> logout.logoutSuccessUrl("/login"))
                 .csrf(csrf -> {
@@ -96,6 +98,11 @@ class SecurityConfiguration {
     @Bean
     PublicKeyCredentialUserEntityRepository passkeyToUserRepo(JdbcOperations jdbcOperations) {
         return new JdbcPublicKeyCredentialUserEntityRepository(jdbcOperations);
+    }
+
+    @Bean
+    CustomPublicKeyCredentialCreationOptionsRepository creationOptionsRepository() {
+        return new CustomPublicKeyCredentialCreationOptionsRepository();
     }
 
 }

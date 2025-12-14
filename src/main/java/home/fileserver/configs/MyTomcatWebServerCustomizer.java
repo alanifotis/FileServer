@@ -14,7 +14,7 @@ public class MyTomcatWebServerCustomizer implements WebServerFactoryCustomizer<T
     @Override
     public void customize(TomcatServletWebServerFactory factory) {
         var connector = new Connector(TomcatServletWebServerFactory.DEFAULT_PROTOCOL);
-        connector.setPort(httpPort);
+        connector.setPort(this.httpPort);
         factory.addAdditionalConnectors(connector);
     }
 

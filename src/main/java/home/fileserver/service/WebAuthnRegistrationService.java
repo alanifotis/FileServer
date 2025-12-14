@@ -1,18 +1,14 @@
 package home.fileserver.service;
 
 import com.webauthn4j.WebAuthnManager;
-import com.webauthn4j.data.*;
-import com.webauthn4j.server.ServerProperty;
-
+import com.webauthn4j.data.RegistrationRequest;
 import home.fileserver.models.AppUser;
 import home.fileserver.repositories.AppUserRepository;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
 import java.util.Base64;
-import java.util.Collections;
 
 @Service
 public class WebAuthnRegistrationService {
@@ -46,14 +42,14 @@ public class WebAuthnRegistrationService {
         return """
             {
                 "rp": { "name": "FileServer", "id": "localhost" },
-                "user": { 
-                    "email": "%s", 
-                    "displayName": "%s", 
-                    "id": "%s" 
+                "user": {
+                    "email": "%s",
+                    "displayName": "%s",
+                    "id": "%s"
                 },
                 "challenge": "%s",
                 "pubKeyCredParams": [
-                    { "type": "public-key", "alg": -7 }, 
+                    { "type": "public-key", "alg": -7 },
                     { "type": "public-key", "alg": -257 }
                 ],
                 "timeout": 60000,
@@ -65,7 +61,7 @@ public class WebAuthnRegistrationService {
                 },
                 "extensions": {
                     "credProps": true,
-                    "prf": {} 
+                    "prf": {}
                 }
             }
             """.formatted(email, email, userHandleBase64, challengeBase64);
@@ -74,7 +70,7 @@ public class WebAuthnRegistrationService {
     @Transactional
     public void finishRegistration(RegistrationRequest request) {
         // 1. Create the new User Entity
-        AppUser user = new AppUser().builder().build();
+        AppUser user = new AppUser();
         // Since we don't have the email in the final POST body, you might need to 
         // store the "pending registration" in a Cache/Session using the challenge as a key.
         // For simplicity here, assuming we pass it or retrieve it from session.
@@ -86,9 +82,6 @@ public class WebAuthnRegistrationService {
         user.setPrfSalt(prfSalt);
 
         // 3. Parse and Verify WebAuthn Response using WebAuthn4J
-        RegistrationRequest registrationRequest = request.;
-
-        webAuthnManager.verify(registrationRequest, null)
         
         // ... (Mapping DTO to WebAuthn4J objects omitted for brevity) ...
         // You would perform webAuthnManager.validate(...) here.
@@ -96,18 +89,19 @@ public class WebAuthnRegistrationService {
         // 4. Extract Public Key and Counter
         // AttestationObject -> AuthData -> CredentialPublicKey
         byte[] publicKeyBytes = request.getAttestationObject(); // Extracted from webauthn verification result
-        long counter = ...; 
+        // long counter = ...;
 
         // 5. Create Authenticator Entity
-        Authenticator auth = new Authenticator();
-        auth.setLabel(request.publicKey.label);
-        auth.setCredentialId(credData.id);
-        auth.setPublicKey(publicKeyBytes);
-        auth.setCount(counter);
-        auth.setAaguid("00000000-0000-0000-0000-000000000000"); // or extracted value
+//        Authenticator auth = new Authenticator();
+        // auth.setLabel(request.publicKey.label);
+        // auth.setCredentialId(credData.id);
+//        assert publicKeyBytes != null;
+//        auth.setPublicKey(publicKeyBytes);
+//        // auth.setCount(counter);
+//        auth.setAaguid("00000000-0000-0000-0000-000000000000"); // or extracted value
 
         // 6. Save Everything
-        user.addAuthenticator(auth);
+        // user.addAuthenticator(auth);
         userRepository.save(user);
     }
 }

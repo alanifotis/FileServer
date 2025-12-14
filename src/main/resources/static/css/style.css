@@ -281,7 +281,6 @@ body {
     filter: grayscale(0.5);    /* Optional: Desaturates the color slightly */
 }
 
-/* In style.css */
 .form-feedback.warning {
     color: #856404;
     background-color: #fff3cd;

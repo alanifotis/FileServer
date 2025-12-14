@@ -1,21 +1,38 @@
 package home.fileserver.controllers;
 
+import home.fileserver.models.UserEntity;
+import home.fileserver.repositories.CustomPublicKeyCredentialCreationOptionsRepository;
+import home.fileserver.repositories.UserRepository;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.log4j.Log4j2;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.ResponseStatus;
 
-import lombok.extern.log4j.Log4j2;
-
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.core.io.Resource;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
+import java.net.URI;
+import java.util.UUID;
 
 @Controller
 @Log4j2
 public class RegisterController {
+
+    private final UserRepository repo;
+
+    private final CustomPublicKeyCredentialCreationOptionsRepository optionsRepository;
+
+    public RegisterController (UserRepository repo, CustomPublicKeyCredentialCreationOptionsRepository optionsRepository) {
+        this.repo = repo;
+        this.optionsRepository = optionsRepository;
+    }
 
     @GetMapping("/register")
     public String registerPage() {
@@ -23,9 +40,21 @@ public class RegisterController {
     }
 
     @PostMapping("/register")
-    public String postMethodName(@RequestBody String entity) {
-        // TODO: process POST request
-        return entity;
+    @ResponseStatus(
+            value = HttpStatus.CREATED,
+            code = HttpStatus.CONFLICT,
+            reason = "User exists."
+    )
+    public ResponseEntity<Object> postMethodName(HttpServletRequest request, @RequestBody String email) {
+        var user = repo.findByEmail(email);
+
+        if (user != null) {
+            return ResponseEntity
+                    .status(HttpStatus.CONFLICT)
+                    .body("User exists.");
+        }
+
+       return ResponseEntity.created(URI.create("")).body(new UserEntity(UUID.randomUUID(), (UserDetails) request.getUserPrincipal()));
     }
 
     @GetMapping("/install-cert")
