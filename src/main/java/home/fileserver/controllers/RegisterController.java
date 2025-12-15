@@ -15,6 +15,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -106,6 +107,10 @@ public class RegisterController {
         // 2. Generate Options (using your custom service)
         PublicKeyCredentialCreationOptions options = 
             this.optionsService.getPublicKeyCredentialCreationOptions(email);
+
+        PublicKeyCredentialRequestOptions.builder()
+        .allowCredentials(options.)
+        .build();
 
         // 3. CRITICAL: Save the options! 
         // If you skip this, Spring will reject the credential later saying "No request found"
