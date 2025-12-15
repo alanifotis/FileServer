@@ -1,37 +1,29 @@
 package home.fileserver.controllers;
 
 import home.fileserver.models.UserEntity;
-import home.fileserver.repositories.CustomPublicKeyCredentialCreationOptionsRepository;
 import home.fileserver.repositories.UserRepository;
+import home.fileserver.service.CustomPublicKeyCredentialCreationOptions;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.log4j.Log4j2;
+
+import org.jspecify.annotations.NonNull;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs;
-import org.springframework.security.web.webauthn.api.Bytes;
-import org.springframework.security.web.webauthn.api.COSEAlgorithmIdentifier;
-import org.springframework.security.web.webauthn.api.ImmutableAuthenticationExtensionsClientInputs;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
-import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions.PublicKeyCredentialCreationOptionsBuilder;
-import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity;
-import org.springframework.security.web.webauthn.api.PublicKeyCredentialType;
-import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
+import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
 
-import java.io.Serializable;
 import java.net.URI;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
+import org.springframework.web.bind.annotation.RequestParam;
 
 @Controller
 @Log4j2
@@ -39,11 +31,17 @@ public class RegisterController {
 
     private final UserRepository repo;
 
-    private final CustomPublicKeyCredentialCreationOptionsRepository optionsRepository;
+    private final CustomPublicKeyCredentialCreationOptions optionsService;
 
-    public RegisterController (UserRepository repo, CustomPublicKeyCredentialCreationOptionsRepository optionsRepository) {
+    private final PublicKeyCredentialCreationOptionsRepository creationOptionsRepository;
+
+    public RegisterController(
+            UserRepository repo,
+            CustomPublicKeyCredentialCreationOptions optionsService,
+            PublicKeyCredentialCreationOptionsRepository creationOptionsRepository) {
         this.repo = repo;
-        this.optionsRepository = optionsRepository;
+        this.optionsService = optionsService;
+        this.creationOptionsRepository = creationOptionsRepository;
     }
 
     @GetMapping("/register")
@@ -52,21 +50,17 @@ public class RegisterController {
     }
 
     @PostMapping("/register")
-    @ResponseStatus(
-            value = HttpStatus.CREATED,
-            code = HttpStatus.CONFLICT,
-            reason = "User exists."
-    )
-    public ResponseEntity<Object> postMethodName(HttpServletRequest request, @RequestBody String email) {
+    @ResponseStatus(code = HttpStatus.CREATED, reason = "User exists.")
+    public ResponseEntity<UserEntity> postMethodName(HttpServletRequest request, @RequestBody String email) {
         var user = repo.findByEmail(email);
 
         if (user != null) {
             return ResponseEntity
                     .status(HttpStatus.CONFLICT)
-                    .body("User exists.");
+                    .build();
         }
 
-       return ResponseEntity.created(URI.create("")).body(new UserEntity(UUID.randomUUID(), (UserDetails) request.getUserPrincipal()));
+        return ResponseEntity.created(URI.create("")).body(null);
     }
 
     @GetMapping("/install-cert")
@@ -76,9 +70,9 @@ public class RegisterController {
 
         try {
             log.info("Looking for file at: {}", file.getURI());
-            log.info("File exists? {}",file.exists());
+            log.info("File exists? {}", file.exists());
         } catch (Exception e) {
-             log.error("Could not resolve file path: {}", e.getMessage());
+            log.error("Could not resolve file path: {}", e.getMessage());
         }
 
         if (!file.exists()) {
@@ -86,22 +80,38 @@ public class RegisterController {
         }
 
         return ResponseEntity.ok()
-                // This header tells the browser "This is a Certificate Authority file"
-                // iOS and Android will recognize this and start the installation wizard.
                 .contentType(MediaType.parseMediaType("application/x-x509-ca-cert"))
                 .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=\"ca.pem\"")
                 .body(file);
     }
 
-public PublicKeyCredentialCreationOptions createRegistrationOptions(User user) {
-    
+    @GetMapping("/registration/start")
+    public String getMethodName(@RequestParam @NonNull String param) {
+        return new String();
+    }
 
-    PublicKeyCredentialCreationOptions options = PublicKeyCredentialCreationOptions
-    .builder()
-    .rp(PublicKeyCredentialRpEntity.builder().id("FileServer").name("localhost").build())
-    .extensions(List.of(new ImmutableAuthenticationExtensionsClientInputs())
-    .build();    
+    public ResponseEntity<PublicKeyCredentialCreationOptions> createRegistrationOptions(
+        @RequestBody String email,
+        HttpServletRequest request,
+        HttpServletResponse response
+    ) {
+        log.info("Starting registration for: {}", email);
 
-    return options;
-}
+        // 1. Check if user exists
+        if (repo.findByEmail(email) != null) {
+            log.warn("User already exists: {}", email);
+            return ResponseEntity.status(HttpStatus.CONFLICT).build();
+        }
+
+        // 2. Generate Options (using your custom service)
+        PublicKeyCredentialCreationOptions options = 
+            this.optionsService.getPublicKeyCredentialCreationOptions(email);
+
+        // 3. CRITICAL: Save the options! 
+        // If you skip this, Spring will reject the credential later saying "No request found"
+        this.creationOptionsRepository.save(request, response, options);
+
+        // 4. Return JSON to frontend
+        return ResponseEntity.ok(options);
+    }
 }

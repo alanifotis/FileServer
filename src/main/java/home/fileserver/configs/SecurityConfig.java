@@ -14,10 +14,12 @@ import org.springframework.security.web.webauthn.management.JdbcPublicKeyCredent
 import org.springframework.security.web.webauthn.management.JdbcUserCredentialRepository;
 import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
+import org.springframework.security.web.webauthn.registration.HttpSessionPublicKeyCredentialCreationOptionsRepository;
+import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
+
 import static org.springframework.security.config.Customizer.withDefaults;
 
 import home.fileserver.utilities.SpaCsrfTokenRequestHandler;
-import home.fileserver.repositories.CustomPublicKeyCredentialCreationOptionsRepository;
 
 @Configuration
 // Only enable if there is already a passkey registered
@@ -29,6 +31,7 @@ class SecurityConfiguration {
         "/",
         "/login",
         "/register",
+        "/registration/start",
         "/install-cert",
         "/favicon.ico", 
         "/index.html", 
@@ -63,14 +66,15 @@ class SecurityConfiguration {
                 .webAuthn(passkeys -> {
                     passkeys.rpId(RP_ID);
                     passkeys.allowedOrigins(ALLOWED_HOSTS);
-                    passkeys.creationOptionsRepository(creationOptionsRepository());
+                    // passkeys.creationOptionsRepository(creationOptionsRepository());
+                    passkeys.disableDefaultRegistrationPage(true);
                 })
                 .logout(logout -> logout.logoutSuccessUrl("/login"))
                 .csrf(csrf -> {
                     // Ignore CSRF so we do not have to deal with it in pure JS implementations.
                     // Avoid doing this, instead following Spring Security's recommendations for CSRF:
                     // https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html#csrf-integration-javascript
-                    csrf.ignoringRequestMatchers("/webauthn/**", "/login/webauthn");
+                    csrf.ignoringRequestMatchers("/webauthn/**", "/login/webauthn", "/register/start");
                     // Instead you should be doing this:
                     var repo = new CookieCsrfTokenRepository();
                     repo.setCookieCustomizer(c -> 
@@ -101,8 +105,8 @@ class SecurityConfiguration {
     }
 
     @Bean
-    CustomPublicKeyCredentialCreationOptionsRepository creationOptionsRepository() {
-        return new CustomPublicKeyCredentialCreationOptionsRepository();
+    PublicKeyCredentialCreationOptionsRepository optRepo() {
+        return new HttpSessionPublicKeyCredentialCreationOptionsRepository();
     }
 
 }

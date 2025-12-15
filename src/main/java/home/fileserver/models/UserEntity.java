@@ -11,7 +11,8 @@ import jakarta.persistence.Id;
 public record UserEntity(
     @Id
     UUID id,
-    UserDetails user
+    UserDetails user,
+    String email
 ) {
     public String getPassword() {
         return user.getPassword();

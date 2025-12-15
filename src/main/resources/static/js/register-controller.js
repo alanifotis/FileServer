@@ -112,7 +112,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             // We use the email to identify the user
             const options = await webauthnService.getRegistrationOptions(
                 headers, 
-                '/webauthn/register/options' 
+                '/register/start' 
             );
 
             // Step B: The Dance
