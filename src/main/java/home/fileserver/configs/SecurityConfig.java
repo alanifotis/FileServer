@@ -74,7 +74,7 @@ class SecurityConfiguration {
                     // Ignore CSRF so we do not have to deal with it in pure JS implementations.
                     // Avoid doing this, instead following Spring Security's recommendations for CSRF:
                     // https://docs.spring.io/spring-security/reference/servlet/exploits/csrf.html#csrf-integration-javascript
-                    csrf.ignoringRequestMatchers("/webauthn/**", "/login/webauthn", "/register/start");
+                    csrf.ignoringRequestMatchers("/webauthn/**", "/login/webauthn", "/registration/start");
                     // Instead you should be doing this:
                     var repo = new CookieCsrfTokenRepository();
                     repo.setCookieCustomizer(c -> 

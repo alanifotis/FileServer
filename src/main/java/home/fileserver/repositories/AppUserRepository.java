@@ -4,10 +4,10 @@ import org.jspecify.annotations.NonNull;
 import org.jspecify.annotations.Nullable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
-import home.fileserver.models.AppUser;
+import home.fileserver.models.User;
 
-public interface AppUserRepository extends JpaRepository<AppUser, Long>{
+public interface AppUserRepository extends JpaRepository<User, Long>{
 
-    @Nullable AppUser findByEmail(@NonNull String email);
+    @Nullable User findByEmail(@NonNull String email);
     
 }

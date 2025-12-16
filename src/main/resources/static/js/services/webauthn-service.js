@@ -27,11 +27,14 @@ async function checkPrfSupport() {
 /**
  * Step 1: Get Options
  */
-async function getRegistrationOptions(headers, endpoint) {
+async function getRegistrationOptions(headers, endpoint, email) {
   try {
-    const response = await http.post(endpoint, headers);
+    const response = await http.post(endpoint, headers, email);
     if (!response.ok) {
-      throw new Error(`Server error: ${response.status}`);
+      throw new Error(`Server error: ${response.status}\n ${response.text().then((text) => {
+        console.error(`Server Message: ${text}`);
+      })}`);
+
     }
     const options = await response.json();
 
