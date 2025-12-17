@@ -14,11 +14,13 @@ import org.springframework.security.web.webauthn.management.JdbcPublicKeyCredent
 import org.springframework.security.web.webauthn.management.JdbcUserCredentialRepository;
 import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
-import org.springframework.security.web.webauthn.registration.HttpSessionPublicKeyCredentialCreationOptionsRepository;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
+
+import tools.jackson.databind.ObjectMapper;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
+import home.fileserver.repositories.JsonSessionRepository;
 import home.fileserver.utilities.SpaCsrfTokenRequestHandler;
 
 @Configuration
@@ -51,7 +53,7 @@ class SecurityConfiguration {
         "http://192.168.10.161:8080",
     };
 
-    private final String RP_ID = "localhost";
+    private final String RP_ID = "desktop.local";
 
     @Bean
     SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -105,8 +107,8 @@ class SecurityConfiguration {
     }
 
     @Bean
-    PublicKeyCredentialCreationOptionsRepository optRepo() {
-        return new HttpSessionPublicKeyCredentialCreationOptionsRepository();
+    PublicKeyCredentialCreationOptionsRepository optRepo(ObjectMapper mapper) {
+        return new JsonSessionRepository(mapper);
     }
 
 }

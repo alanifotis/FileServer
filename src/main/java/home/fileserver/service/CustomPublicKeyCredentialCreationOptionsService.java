@@ -27,6 +27,8 @@ import org.springframework.stereotype.Service;
 import home.fileserver.models.AuthenticationExtensionsCredProps;
 import home.fileserver.models.AuthenticationExtensionsPrfInputs;
 import home.fileserver.models.AuthenticationExtensionsPrfInputs.PrfValues;
+import home.fileserver.utilities.Longs;
+import home.fileserver.utilities.Snowflake;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -35,30 +37,38 @@ import lombok.RequiredArgsConstructor;
 @RequiredArgsConstructor
 public class CustomPublicKeyCredentialCreationOptionsService {
         private final PublicKeyCredentialCreationOptionsRepository creationOptionsRepository;
+        private final Snowflake snowflake;
 
         public PublicKeyCredentialCreationOptions getPublicKeyCredentialCreationOptions(
                         @NonNull String email,
                         HttpServletRequest request,
                         HttpServletResponse response) {
+                byte[] userId = Longs.toByteArray(snowflake.nextId());
                 Bytes challenge = Bytes.random();
-                PublicKeyCredentialRpEntity rp = PublicKeyCredentialRpEntity.builder().id("localhost")
+                PublicKeyCredentialRpEntity rp = PublicKeyCredentialRpEntity.builder().id("desktop.local")
                                 .name("Home FileServer")
                                 .build();
-                PublicKeyCredentialUserEntity user = ImmutablePublicKeyCredentialUserEntity.builder().id(Bytes.random())
-                                .displayName(email).name(email).build();
+                PublicKeyCredentialUserEntity user = ImmutablePublicKeyCredentialUserEntity.builder()
+                                .id(new Bytes(userId))
+                                .displayName(email)
+                                .name(email)
+                                .build();
 
+                // Ed25519 (Preferred modern)
+                // ES256 (Universal fallback)
+                // RS256 (Legacy fallback)
+                // ES256 -7 SHA-256 ECDSA w/ SHA-256
+                // ES384 -35 SHA-384 ECDSA w/ SHA-384
+                // ES512 -36 SHA-512 ECDSA w/ SHA-512
                 List<PublicKeyCredentialParameters> publicKeyCredentialParameters = new ArrayList<PublicKeyCredentialParameters>(
                                 List.of(
                                                 PublicKeyCredentialParameters.EdDSA,
                                                 PublicKeyCredentialParameters.ES256,
                                                 PublicKeyCredentialParameters.ES384,
                                                 PublicKeyCredentialParameters.ES512,
-                                                PublicKeyCredentialParameters.RS256,
-                                                PublicKeyCredentialParameters.RS384,
-                                                PublicKeyCredentialParameters.RS512,
-                                                PublicKeyCredentialParameters.RS1));
+                                                PublicKeyCredentialParameters.RS256));
 
-                Duration timeout = Duration.ofMillis(450000L);
+                Duration timeout = Duration.ofMillis(300000L);
 
                 List<PublicKeyCredentialDescriptor> excludeCredentials = Collections.emptyList();
 

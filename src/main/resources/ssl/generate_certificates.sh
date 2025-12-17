@@ -39,7 +39,8 @@ ORGANIZATION_UNIT="IT"
 
 # Network Configuration (Add your DNSs here)
 DNS_LIST=(
-  $DOMAIN
+  $DOMAIN,
+  "desktop.local"
 )
 
 # Network Configuration (Add your IPs here)

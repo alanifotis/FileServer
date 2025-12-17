@@ -38,6 +38,8 @@ async function getRegistrationOptions(headers, endpoint, email) {
     }
     const options = await response.json();
 
+    console.warn(options);
+
     const decodedExcludeCredentials = !options.excludeCredentials
       ? []
       : options.excludeCredentials.map((cred) => ({

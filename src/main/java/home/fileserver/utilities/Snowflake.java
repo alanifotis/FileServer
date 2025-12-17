@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 
 @Component
 public class Snowflake {
+    @SuppressWarnings("unused")
     private static final int UNUSED_BITS = 1; // Sign bit, Unused (always set to 0)
     private static final int EPOCH_BITS = 41;
     private static final int NODE_ID_BITS = 10;
@@ -16,7 +17,6 @@ public class Snowflake {
     private static final long maxNodeId = (1L << NODE_ID_BITS) - 1;
     private static final long maxSequence = (1L << SEQUENCE_BITS) - 1;
 
-    // Custom Epoch (January 1, 2015 Midnight UTC = 2015-01-01T00:00:00Z)
     private static final long DEFAULT_CUSTOM_EPOCH = 1765874817000L;
 
     private final long nodeId;
