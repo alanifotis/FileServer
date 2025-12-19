@@ -32,7 +32,7 @@ public final class SpaCsrfTokenRequestHandler implements CsrfTokenRequestHandler
 
 	@Override
 	public String resolveCsrfTokenValue(HttpServletRequest request, @NonNull CsrfToken csrfToken) {
-		String headerValue = request.getHeader("x-csrf");
+		String headerValue = request.getHeader("X-XSRF-TOKEN");
 		/*
 		 * If the request contains a request header, use CsrfTokenRequestAttributeHandler
 		 * to resolve the CsrfToken. This applies when a single-page application includes

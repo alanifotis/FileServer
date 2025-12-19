@@ -31,8 +31,8 @@ public class User implements UserDetails {
     private String email;
 
     @Builder.Default
-    @Column(columnDefinition = "varchar(50) default 'USER'")
-    private String roles = "USER";
+    @Column(name = "roles", columnDefinition = "varchar(50) default 'USER'")
+    private String role = "USER";
 
     // --- UX Fields ---
     
@@ -71,14 +71,14 @@ public class User implements UserDetails {
 
     @Override
     public Collection<? extends GrantedAuthority> getAuthorities() {
-        return List.of(new SimpleGrantedAuthority("ROLE_" + roles));
+        return List.of(new SimpleGrantedAuthority("ROLE_" + role));
     }
 
     @Override public String getPassword() { return ""; } // No password
     @Override public boolean isAccountNonExpired() { return true; }
     @Override public boolean isAccountNonLocked() { return true; }
     @Override public boolean isCredentialsNonExpired() { return true; }
-    @Override public boolean isEnabled() { return true; } // Always true
+    @Override public boolean isEnabled() { return true; }
 }
 
 // The Enum for your tiers

@@ -6,6 +6,7 @@ import java.util.Collections;
 import java.util.List;
 
 import org.jspecify.annotations.NonNull;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.web.webauthn.api.AttestationConveyancePreference;
 import org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInput;
 import org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs;
@@ -22,8 +23,11 @@ import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEnti
 import org.springframework.security.web.webauthn.api.ResidentKeyRequirement;
 import org.springframework.security.web.webauthn.api.UserVerificationRequirement;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
+import org.springframework.security.web.webauthn.api.AuthenticatorAttachment;
 import org.springframework.stereotype.Service;
 
+
+import home.fileserver.dto.PasskeyRegistrationRequestDto;
 import home.fileserver.models.AuthenticationExtensionsCredProps;
 import home.fileserver.models.AuthenticationExtensionsPrfInputs;
 import home.fileserver.models.AuthenticationExtensionsPrfInputs.PrfValues;
@@ -36,22 +40,28 @@ import lombok.RequiredArgsConstructor;
 @Service
 @RequiredArgsConstructor
 public class CustomPublicKeyCredentialCreationOptionsService {
+        @Value("${fileserver.PublicKeyCredentialRpEntity.name}")
+        private String rpEntityName;
+        @Value("${fileserver.PublicKeyCredentialRpEntity.id}")
+        private String rpEntityId;
         private final PublicKeyCredentialCreationOptionsRepository creationOptionsRepository;
         private final Snowflake snowflake;
 
         public PublicKeyCredentialCreationOptions getPublicKeyCredentialCreationOptions(
-                        @NonNull String email,
+                        @NonNull PasskeyRegistrationRequestDto dto,
                         HttpServletRequest request,
                         HttpServletResponse response) {
                 byte[] userId = Longs.toByteArray(snowflake.nextId());
                 Bytes challenge = Bytes.random();
-                PublicKeyCredentialRpEntity rp = PublicKeyCredentialRpEntity.builder().id("desktop.local")
-                                .name("Home FileServer")
+                PublicKeyCredentialRpEntity rp = PublicKeyCredentialRpEntity
+                                .builder()
+                                .id(rpEntityId)
+                                .name(rpEntityName)
                                 .build();
                 PublicKeyCredentialUserEntity user = ImmutablePublicKeyCredentialUserEntity.builder()
                                 .id(new Bytes(userId))
-                                .displayName(email)
-                                .name(email)
+                                .displayName(dto.email().substring(0, dto.email().indexOf('@')))
+                                .name(dto.email())
                                 .build();
 
                 // Ed25519 (Preferred modern)
@@ -72,8 +82,14 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 List<PublicKeyCredentialDescriptor> excludeCredentials = Collections.emptyList();
 
+                AuthenticatorAttachment authenticatorAttachment = null;
+
+                if (dto.userAgent().contains("Linux") || dto.userAgent().contains("Windows")) {
+                        authenticatorAttachment = AuthenticatorAttachment.CROSS_PLATFORM;
+                }
+
                 AuthenticatorSelectionCriteria authenticatorSelection = AuthenticatorSelectionCriteria.builder()
-                                .authenticatorAttachment(null)
+                                .authenticatorAttachment(authenticatorAttachment)
                                 .residentKey(ResidentKeyRequirement.REQUIRED)
                                 .userVerification(UserVerificationRequirement.REQUIRED)
                                 .build();

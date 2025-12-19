@@ -38,6 +38,7 @@ async function getRegistrationOptions(headers, endpoint, email) {
     }
     const options = await response.json();
 
+
     console.warn(options);
 
     const decodedExcludeCredentials = !options.excludeCredentials
@@ -55,6 +56,13 @@ async function getRegistrationOptions(headers, endpoint, email) {
       },
       challenge: base64url.decode(options.challenge),
       excludeCredentials: decodedExcludeCredentials,
+      extensions: {
+        prf: { 
+          eval: { 
+            first : base64url.decode(options.extensions.prf.eval.first) 
+          } 
+        }
+      }
     };
   } catch (err) {
     throw new Error(`Failed to fetch options: ${err.message}`, { cause: err });
@@ -65,9 +73,6 @@ async function getRegistrationOptions(headers, endpoint, email) {
  * Step 2: Create Passkey with PRF enabled
  */
 async function createPasskey(options) {
-  // Ensure PRF is requested
-  if (!options.extensions) { options.extensions = {}; }
-  options.extensions.prf = {};
 
   let credential;
   try {
@@ -79,22 +84,7 @@ async function createPasskey(options) {
     throw err;
   }
 
-  const extensions = credential.getClientExtensionResults();
-  const prfEnabled = !!(extensions.prf && extensions.prf.enabled);
-
-  return {
-    id: credential.id,
-    type: credential.type,
-    rawId: base64url.encode(credential.rawId),
-    response: {
-      attestationObject: base64url.encode(credential.response.attestationObject),
-      clientDataJSON: base64url.encode(credential.response.clientDataJSON),
-      transports: credential.response.getTransports ? credential.response.getTransports() : [],
-    },
-    clientExtensionResults: extensions,
-    authenticatorAttachment: credential.authenticatorAttachment,
-    isEncryptionSupported: prfEnabled
-  };
+  return credential;
 }
 
 export default {

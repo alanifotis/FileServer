@@ -7,8 +7,6 @@ public final class Longs {
     public static final int BYTES = Long.BYTES;
 
     public static byte[] toByteArray(long value) {
-    // Note that this code needs to stay compatible with GWT, which has known
-    // bugs when narrowing byte casts of long values occur.
     byte[] result = new byte[8];
     for (int i = 7; i >= 0; i--) {
       result[i] = (byte) (value & 0xffL);
@@ -18,7 +16,7 @@ public final class Longs {
   }
 
   public static long fromByteArray(byte[] bytes) {
-    if (bytes.length >= BYTES) {
+    if (bytes.length < BYTES) {
         throw new IllegalArgumentException(String.format("array too small: %s < %s", bytes.length, BYTES));
     }
     return fromBytes(

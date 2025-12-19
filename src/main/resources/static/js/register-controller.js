@@ -102,7 +102,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
-        const headers = { 'X-XSRF-TOKEN': csrfToken };
+        const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken };
         
         resetPopups(ui);
         setLoading(ui, true);
@@ -113,25 +113,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             const options = await webauthnService.getRegistrationOptions(
                 headers, 
                 '/registration/start',
-                email 
+                { email: email, userAgent: navigator.userAgent }
             );
 
             // Step B: The Dance
-            const credential = await webauthnService.createPasskey(options);
+            const credentials = await webauthnService.createPasskey(options);
 
             // Step C: Send to Custom Endpoint
             const payload = {
                 email: email,
-                credential: {
-                    id: credential.id,
-                    rawId: credential.rawId,
-                    type: credential.type,
-                    response: credential.response,
-                    clientExtensionResults: credential.clientExtensionResults,
-                    authenticatorAttachment: credential.authenticatorAttachment
-                },
-                label: "My Passkey"
+                label: "Registration Passkey",
+                credentials: credentials
             };
+
+            console.warn(payload);
 
             const response = await http.post('/register', headers, payload);
             
@@ -142,7 +137,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Success
             setSuccess(ui, "Account created successfully! Redirecting...");
-            setTimeout(() => window.location.href = '/login', 2000);
+            // setTimeout(() => window.location.href = '/login', 2000);
 
         } catch (error) {
             console.error(error);

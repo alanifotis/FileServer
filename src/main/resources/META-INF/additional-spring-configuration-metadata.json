@@ -1,0 +1,17 @@
+{"properties": [
+  {
+    "name": "fileserver.PublicKeyCredentialRpEntity.name",
+    "type": "java.lang.String",
+    "description": "The name of RP Entity. Can have any value."
+  },
+  {
+    "name": "server.http.port",
+    "type": "java.lang.Integer",
+    "description": "Referes to the server's port for the http protocol."
+  },
+  {
+    "name": "fileserver.PublicKeyCredentialRpEntity.id",
+    "type": "java.lang.String",
+    "description": "The id of RP Entity. Should be the hostname (example.com, localhost, etc)."
+  }
+]}

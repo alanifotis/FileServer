@@ -9,7 +9,6 @@ public class JacksonConfig {
 
     @Bean
     public WebauthnJacksonModule webauthnJacksonModule() {
-        // This automatically registers the module with Spring's default ObjectMapper
         return new WebauthnJacksonModule();
     }
 }

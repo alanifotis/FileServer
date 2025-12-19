@@ -39,8 +39,9 @@ ORGANIZATION_UNIT="IT"
 
 # Network Configuration (Add your DNSs here)
 DNS_LIST=(
-  $DOMAIN,
+  $DOMAIN
   "desktop.local"
+  "witt-solutions.local"
 )
 
 # Network Configuration (Add your IPs here)
