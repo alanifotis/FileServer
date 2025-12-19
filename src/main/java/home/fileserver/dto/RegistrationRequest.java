@@ -3,8 +3,6 @@ package home.fileserver.dto;
 import java.util.Collections;
 import java.util.Set;
 
-import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
-
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.web.webauthn.api.*;
 
