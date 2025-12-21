@@ -92,9 +92,15 @@ async function createPasskey(options) {
 
   const clientExtensionResults = credentialsContainer.getClientExtensionResults();
   if (clientExtensionResults.prf.enabled) {
-    console.log(`Before: ${clientExtensionResults.prf.results.first}`)
-    clientExtensionResults.prf.results.first = base64url.encode(clientExtensionResults.prf.results.first);
-    console.log(`After: ${clientExtensionResults.prf.results.first}`)
+    try {
+      console.log(`Before: ${clientExtensionResults.prf.results.first}`);
+      clientExtensionResults.prf.results.first = base64url.encode(clientExtensionResults.prf.results.first);
+      console.log(`After: ${clientExtensionResults.prf.results.first}`);
+    } catch (e) {
+      console.error(e);
+      console.warn("Prf First is NULL.");
+    }
+
   }
 
   const credential = {
