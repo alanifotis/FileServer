@@ -1,5 +1,15 @@
 package home.fileserver.service;
 
+import home.fileserver.utilities.Longs;
+import jakarta.transaction.Transactional;
+import org.jspecify.annotations.Nullable;
+import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.core.JdbcTemplate;
+import org.springframework.jdbc.core.RowMapper;
+import org.springframework.security.web.webauthn.api.*;
+import org.springframework.security.web.webauthn.management.UserCredentialRepository;
+import org.springframework.util.StringUtils;
+
 import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
@@ -7,21 +17,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
-import org.springframework.security.web.webauthn.api.AuthenticatorTransport;
-import org.springframework.security.web.webauthn.api.Bytes;
-import org.springframework.security.web.webauthn.api.CredentialRecord;
-import org.springframework.security.web.webauthn.api.ImmutableCredentialRecord;
-import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCose;
-import org.springframework.security.web.webauthn.api.PublicKeyCredentialType;
-import org.springframework.security.web.webauthn.management.UserCredentialRepository;
-import org.springframework.util.StringUtils;
-
-import home.fileserver.utilities.Longs;
-import jakarta.transaction.Transactional;
 
 
 public class CustomJdbcUserCredentialRepository implements UserCredentialRepository {
@@ -40,17 +35,16 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
 
         // 2. Flatten transports to simple CSV string
         String transports = null;
-        if (record.getTransports() != null) {
-            transports = record.getTransports().stream()
-                    .map(AuthenticatorTransport::getValue)
-                    .collect(Collectors.joining(","));
-        }
+        record.getTransports();
+        transports = record.getTransports().stream()
+                .map(AuthenticatorTransport::getValue)
+                .collect(Collectors.joining(","));
 
         // 3. Postgres "Upsert" (Cleaner than Spring's check-then-insert)
         String sql = """
             INSERT INTO user_credentials (
-                credential_id, user_id, public_key, label, signature_count, 
-                uv_initialized, backup_eligible, backup_state, authenticator_transports, 
+                credential_id, user_id, public_key, label, signature_count,\s
+                uv_initialized, backup_eligible, backup_state, authenticator_transports,\s
                 attestation_object, attestation_client_data_json, created, last_used
             ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             ON CONFLICT (credential_id) DO UPDATE SET
@@ -59,9 +53,10 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
                 uv_initialized = EXCLUDED.uv_initialized,
                 backup_state = EXCLUDED.backup_state,
                 authenticator_transports = EXCLUDED.authenticator_transports
-        """;
+       \s""";
 
         // 4. No complex SqlParameterValue wrappers needed for Postgres Bytea
+        record.getLastUsed();
         jdbcTemplate.update(sql,
                 record.getCredentialId().toBase64UrlString(), // ID is string in DB
                 userId,                                       // ID is Long in DB
@@ -75,12 +70,12 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
                 record.getAttestationObject() != null ? record.getAttestationObject().getBytes() : null,
                 record.getAttestationClientDataJSON() != null ? record.getAttestationClientDataJSON().getBytes() : null,
                 Timestamp.from(record.getCreated()),
-                record.getLastUsed() != null ? Timestamp.from(record.getLastUsed()) : null
+                Timestamp.from(record.getLastUsed())
         );
     }
 
     @Override
-    public CredentialRecord findByCredentialId(Bytes credentialId) {
+    public @Nullable CredentialRecord findByCredentialId(Bytes credentialId) {
         String sql = "SELECT * FROM user_credentials WHERE credential_id = ?";
         try {
             return jdbcTemplate.queryForObject(sql, new CredentialRecordMapper(), credentialId.toBase64UrlString());

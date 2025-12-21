@@ -86,6 +86,10 @@ async function createPasskey(options) {
 
   const { response } = credentialsContainer;
 
+  console.log(credentialsContainer.getClientExtensionResults());
+
+  console.log(credentialsContainer);
+
   const clientExtensionResults = credentialsContainer.getClientExtensionResults();
   if (clientExtensionResults.prf.enabled) {
     console.log(`Before: ${clientExtensionResults.prf.results.first}`)

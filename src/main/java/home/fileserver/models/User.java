@@ -1,10 +1,7 @@
 package home.fileserver.models;
 
 import jakarta.persistence.*;
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Getter;
-import lombok.Setter;
+import lombok.*;
 
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -21,6 +18,7 @@ import java.util.List;
 @Setter 
 @AllArgsConstructor
 @Builder
+@NoArgsConstructor
 public class User implements UserDetails {
 
     @Id 
@@ -57,7 +55,7 @@ public class User implements UserDetails {
     private long storageUsedBytes = 0; // The counter
     
     @Column(name = "root_folder_id")
-    private Long rootFolderId; // Optimization to find their Home quickly
+    private Long rootFolderId = this.id; // Optimization to find their Home quickly
 
     // --- Security ---
 

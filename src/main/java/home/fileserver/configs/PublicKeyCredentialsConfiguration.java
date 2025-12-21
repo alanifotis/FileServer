@@ -1,9 +1,7 @@
 package home.fileserver.configs;
 
-import java.util.Set;
-
-import javax.sql.DataSource;
-
+import home.fileserver.service.CustomJdbcUserCredentialRepository;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -12,13 +10,12 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.provisioning.JdbcUserDetailsManager;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity;
-import org.springframework.security.web.webauthn.management.JdbcPublicKeyCredentialUserEntityRepository;
-import org.springframework.security.web.webauthn.management.PublicKeyCredentialUserEntityRepository;
-import org.springframework.security.web.webauthn.management.UserCredentialRepository;
-import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
-import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPartyOperations;
-import home.fileserver.service.CustomJdbcUserCredentialRepository;
-import lombok.RequiredArgsConstructor;
+import org.springframework.security.web.webauthn.management.*;
+import org.springframework.security.web.webauthn.registration.HttpSessionPublicKeyCredentialCreationOptionsRepository;
+import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
+
+import javax.sql.DataSource;
+import java.util.Set;
 
 @Configuration
 @RequiredArgsConstructor
@@ -28,7 +25,7 @@ public class PublicKeyCredentialsConfiguration {
     private final JdbcTemplate jdbcTemplate;
     private final JdbcOperations jdbcOperations;
     private static final Set<String> ALLOWED_ORIGINS = Set.of(
-            "http://localhost:8443", // Allow local testing
+            "https://localhost:8443", // Allow local testing
             "https://witt-solution.local:8443", // Allow production
             "https://home.local:8443" // Allow www subdomain
     );
@@ -60,6 +57,12 @@ public class PublicKeyCredentialsConfiguration {
                 .name(rpName)
                 .build();
     }
+
+    @Bean
+    PublicKeyCredentialCreationOptionsRepository getPublicKeyCredentialCreationOptionsRepository() {
+        return     new HttpSessionPublicKeyCredentialCreationOptionsRepository();
+    }
+
 
     @Bean
     WebAuthnRelyingPartyOperations relyingPartyOperations(
