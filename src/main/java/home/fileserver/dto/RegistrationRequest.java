@@ -1,10 +1,13 @@
 package home.fileserver.dto;
 
-import java.util.Collections;
 import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.web.webauthn.api.*;
+
+import home.fileserver.dto.AndroidPrfResponse.Prf.Results;
+import home.fileserver.models.PlanTier;
+import home.fileserver.models.User;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -57,7 +60,8 @@ public record RegistrationRequest(
     ) {
         
         public record PrfDto(
-            boolean enabled
+            boolean enabled,
+            Results results
         ) {}
     }
 
@@ -73,11 +77,12 @@ public record RegistrationRequest(
         
         if (credentials.clientExtensionResults != null && credentials.clientExtensionResults.prf != null) {
             boolean prfEnabled = credentials.clientExtensionResults.prf.enabled;
+            Results results = credentials.clientExtensionResults.prf.results;
             // Use your custom AndroidPrfResponse class here
-            outputList.add(new AndroidPrfResponse(prfEnabled));
+            outputList.add(new AndroidPrfResponse(prfEnabled, results));
         }
 
-        List<AuthenticatorTransport> tr = Collections.emptyList();
+        List<AuthenticatorTransport> tr = new ArrayList<>();
 
         if (credentials.response.transports != null) {
             
@@ -110,5 +115,20 @@ public record RegistrationRequest(
         builder.clientExtensionResults(new ImmutableAuthenticationExtensionsClientOutputs(outputList));
 
         return builder.build();
+    }
+
+    public String getDisplayName() {
+        return this.email().substring(0, this.email().indexOf('@'));
+    }
+
+    public User toUser() {
+        
+        return User.builder()
+        .id(null)
+        .email(this.email())
+        .displayName(this.getDisplayName())
+        .planTier(PlanTier.PRO)
+        .avatarUrl(null)
+        .build();
     }
 }

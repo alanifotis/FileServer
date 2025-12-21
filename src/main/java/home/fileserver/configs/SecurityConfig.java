@@ -69,6 +69,8 @@ class SecurityConfiguration {
                     passkeys.allowedOrigins(ALLOWED_HOSTS);
                     passkeys.creationOptionsRepository(creationOptionsRepository);
                     passkeys.disableDefaultRegistrationPage(true);
+                    // HttpMessageConverter<Object> converter = new JacksonJsonHttpMessageConverter(JsonMapper.builder().addModule(new WebauthnJacksonModule()).build());
+                    // passkeys.messageConverter(converter);
                 })
                 .logout(logout -> logout.logoutSuccessUrl("/login"))
                 .csrf(csrf -> {

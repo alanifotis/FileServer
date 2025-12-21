@@ -159,6 +159,12 @@ async function register(headers, contextPath, label) {
 
   // FIXME: Let response be credential.response. If response is not an instance of AuthenticatorAttestationResponse, abort the ceremony with a user-visible error. https://www.w3.org/TR/webauthn-3/#sctn-registering-a-new-credential
   const { response } = credentialsContainer;
+
+  const prf = credentialsContainer.getClientExtensionResults();
+  if (prf) {
+    console.log(prf);
+  }
+
   const credential = {
     id: credentialsContainer.id,
     rawId: base64url.encode(credentialsContainer.rawId),
@@ -168,7 +174,7 @@ async function register(headers, contextPath, label) {
       transports: response.getTransports ? response.getTransports() : [],
     },
     type: credentialsContainer.type,
-    clientExtensionResults: credentialsContainer.getClientExtensionResults(),
+    clientExtensionResults: prf,
     authenticatorAttachment: credentialsContainer.authenticatorAttachment,
   };
 

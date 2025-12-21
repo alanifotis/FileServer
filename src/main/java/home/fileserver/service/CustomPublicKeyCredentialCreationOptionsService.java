@@ -12,6 +12,7 @@ import org.springframework.security.web.webauthn.api.AuthenticationExtensionsCli
 import org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInputs;
 import org.springframework.security.web.webauthn.api.AuthenticatorSelectionCriteria;
 import org.springframework.security.web.webauthn.api.Bytes;
+import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.ImmutableAuthenticationExtensionsClientInput;
 import org.springframework.security.web.webauthn.api.ImmutableAuthenticationExtensionsClientInputs;
 import org.springframework.security.web.webauthn.api.ImmutablePublicKeyCredentialUserEntity;
@@ -22,15 +23,18 @@ import org.springframework.security.web.webauthn.api.PublicKeyCredentialRpEntity
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialUserEntity;
 import org.springframework.security.web.webauthn.api.ResidentKeyRequirement;
 import org.springframework.security.web.webauthn.api.UserVerificationRequirement;
+import org.springframework.security.web.webauthn.management.ImmutableRelyingPartyRegistrationRequest;
+import org.springframework.security.web.webauthn.management.RelyingPartyPublicKey;
+import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
 import org.springframework.security.web.webauthn.api.AuthenticatorAttachment;
 import org.springframework.stereotype.Service;
-
-
 import home.fileserver.dto.PasskeyRegistrationRequestDto;
+import home.fileserver.dto.RegistrationRequest;
 import home.fileserver.models.AuthenticationExtensionsCredProps;
 import home.fileserver.models.AuthenticationExtensionsPrfInputs;
 import home.fileserver.models.AuthenticationExtensionsPrfInputs.PrfValues;
+import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.utilities.Longs;
 import home.fileserver.utilities.Snowflake;
 import jakarta.servlet.http.HttpServletRequest;
@@ -45,7 +49,10 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         @Value("${fileserver.PublicKeyCredentialRpEntity.id}")
         private String rpEntityId;
         private final PublicKeyCredentialCreationOptionsRepository creationOptionsRepository;
+        private final WebAuthnRelyingPartyOperations rpOptions;
         private final Snowflake snowflake;
+        private final AppUserRepository userRepository;
+        private final PublicKeyCredentialRpEntity rpEntity;
 
         public PublicKeyCredentialCreationOptions getPublicKeyCredentialCreationOptions(
                         @NonNull PasskeyRegistrationRequestDto dto,
@@ -53,11 +60,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         HttpServletResponse response) {
                 byte[] userId = Longs.toByteArray(snowflake.nextId());
                 Bytes challenge = Bytes.random();
-                PublicKeyCredentialRpEntity rp = PublicKeyCredentialRpEntity
-                                .builder()
-                                .id(rpEntityId)
-                                .name(rpEntityName)
-                                .build();
+
                 PublicKeyCredentialUserEntity user = ImmutablePublicKeyCredentialUserEntity.builder()
                                 .id(new Bytes(userId))
                                 .displayName(dto.email().substring(0, dto.email().indexOf('@')))
@@ -70,9 +73,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 // ES256 -7 SHA-256 ECDSA w/ SHA-256
                 // ES384 -35 SHA-384 ECDSA w/ SHA-384
                 // ES512 -36 SHA-512 ECDSA w/ SHA-512
-                List<PublicKeyCredentialParameters> publicKeyCredentialParameters = new ArrayList<PublicKeyCredentialParameters>(
-                                List.of(
-                                                PublicKeyCredentialParameters.EdDSA,
+                List<PublicKeyCredentialParameters> publicKeyCredentialParameters = new ArrayList<PublicKeyCredentialParameters>(List.of(PublicKeyCredentialParameters.EdDSA,
                                                 PublicKeyCredentialParameters.ES256,
                                                 PublicKeyCredentialParameters.ES384,
                                                 PublicKeyCredentialParameters.ES512,
@@ -113,7 +114,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 PublicKeyCredentialCreationOptions options = PublicKeyCredentialCreationOptions.builder()
                                 .challenge(challenge)
-                                .rp(rp)
+                                .rp(rpEntity)
                                 .user(user)
                                 .pubKeyCredParams(publicKeyCredentialParameters)
                                 .timeout(timeout)
@@ -125,6 +126,29 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 this.creationOptionsRepository.save(request, response, options);
                 return options;
+        }
+
+        public CredentialRecord getCredentialRecord(
+                        RegistrationRequest dto,
+                        String label,
+                        HttpServletRequest request,
+                        HttpServletResponse response) {
+                PublicKeyCredentialCreationOptions options = this.creationOptionsRepository.load(request);
+
+                if (options == null) {
+                        throw new IllegalStateException("Registration flow not started or expired.");
+                }
+
+                var registrationRequest = new ImmutableRelyingPartyRegistrationRequest(options,
+                                new RelyingPartyPublicKey(dto.toPublicKeyCredential(), label));
+
+                CredentialRecord savedRecord = this.rpOptions.registerCredential(registrationRequest);
+
+                userRepository.save(dto.toUser());
+
+                this.creationOptionsRepository.save(request, response, null);
+
+                return savedRecord;
         }
 
 }

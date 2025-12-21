@@ -80,8 +80,3 @@ public class User implements UserDetails {
     @Override public boolean isCredentialsNonExpired() { return true; }
     @Override public boolean isEnabled() { return true; }
 }
-
-// The Enum for your tiers
-enum PlanTier {
-    FREE, PRO, ENTERPRISE
-}

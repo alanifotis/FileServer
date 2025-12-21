@@ -2,7 +2,6 @@ package home.fileserver.controllers;
 
 import home.fileserver.dto.PasskeyRegistrationRequestDto;
 import home.fileserver.dto.RegistrationRequest;
-import home.fileserver.models.User;
 import home.fileserver.service.CustomPublicKeyCredentialCreationOptionsService;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -13,13 +12,12 @@ import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-
-import java.net.URI;
 
 @Controller
 @Log4j2
@@ -36,7 +34,10 @@ public class RegisterController {
 
     @PostMapping("/register")
     // @ResponseStatus(code = HttpStatus.CREATED, reason = "User exists.")
-    public ResponseEntity<User> postMethodName(HttpServletRequest request, @RequestBody RegistrationRequest email) {
+    public ResponseEntity<CredentialRecord> postMethodName(
+        HttpServletRequest request,
+        HttpServletResponse response,
+        @RequestBody RegistrationRequest email) {
         /*
          * {
          * "email": "test@gmail.com",
@@ -93,7 +94,9 @@ public class RegisterController {
 
         log.info("Device Response: {}", email);
 
-        return ResponseEntity.created(URI.create("")).body(null);
+        CredentialRecord cr = this.optionsService.getCredentialRecord(email, email.label(), request, response);
+
+        return ResponseEntity.ok(cr);
     }
 
     @GetMapping("/install-cert")

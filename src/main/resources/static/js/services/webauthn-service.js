@@ -57,10 +57,10 @@ async function getRegistrationOptions(headers, endpoint, email) {
       challenge: base64url.decode(options.challenge),
       excludeCredentials: decodedExcludeCredentials,
       extensions: {
-        prf: { 
-          eval: { 
-            first : base64url.decode(options.extensions.prf.eval.first) 
-          } 
+        prf: {
+          eval: {
+            first: new TextEncoder().encode('FileServer')
+          }
         }
       }
     };
@@ -74,15 +74,37 @@ async function getRegistrationOptions(headers, endpoint, email) {
  */
 async function createPasskey(options) {
 
-  let credential;
+  let credentialsContainer;
   try {
-    credential = await navigator.credentials.create({
+    credentialsContainer = await navigator.credentials.create({
       publicKey: options,
       signal: abortController.newSignal(),
     });
   } catch (err) {
     throw err;
   }
+
+  const { response } = credentialsContainer;
+
+  const clientExtensionResults = credentialsContainer.getClientExtensionResults();
+  if (clientExtensionResults.prf.enabled) {
+    console.log(`Before: ${clientExtensionResults.prf.results.first}`)
+    clientExtensionResults.prf.results.first = base64url.encode(clientExtensionResults.prf.results.first);
+    console.log(`After: ${clientExtensionResults.prf.results.first}`)
+  }
+
+  const credential = {
+    id: credentialsContainer.id,
+    rawId: base64url.encode(credentialsContainer.rawId),
+    response: {
+      attestationObject: base64url.encode(response.attestationObject),
+      clientDataJSON: base64url.encode(response.clientDataJSON),
+      transports: response.getTransports ? response.getTransports() : [],
+    },
+    type: credentialsContainer.type,
+    clientExtensionResults: clientExtensionResults,
+    authenticatorAttachment: credentialsContainer.authenticatorAttachment,
+  };
 
   return credential;
 }
