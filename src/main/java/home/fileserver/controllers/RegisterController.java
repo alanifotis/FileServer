@@ -10,10 +10,12 @@ import lombok.extern.log4j.Log4j2;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -26,77 +28,37 @@ public class RegisterController {
 
     private final CustomPublicKeyCredentialCreationOptionsService optionsService;
 
-
     @GetMapping("/register")
     public String registerPage() {
         return "forward:/register.html";
     }
 
+    @GetMapping("/login")
+    public String loginPage() {
+        return "forward:/login.html";
+    }
+
+    @PostMapping("/login/options")
+    public ResponseEntity<PublicKeyCredentialRequestOptions> getLoginOptions(@RequestBody PasskeyRegistrationRequestDto dto, HttpServletRequest request, HttpServletResponse response) {
+        log.warn("Received Email: {}", dto.email());
+        PublicKeyCredentialRequestOptions options = this.optionsService.getPublicKeyCredentialRequestOptions(dto.email() , request, response);
+
+        return ResponseEntity.ok(options);
+    }
+
     @PostMapping("/register")
     // @ResponseStatus(code = HttpStatus.CREATED, reason = "User exists.")
     public ResponseEntity<CredentialRecord> postMethodName(
-        HttpServletRequest request,
-        HttpServletResponse response,
-        @RequestBody RegistrationRequest email) {
-        /*
-         * {
-         * "email": "test@gmail.com",
-         * "credential": {
-         * "id": "j1ENF-aoDyfuWAbQQAoEfA",
-         * "rawId": "j1ENF-aoDyfuWAbQQAoEfA",
-         * "type": "public-key",
-         * "response": {
-         * "attestationObject":
-         * "o2NmbXRkbm9uZWdhdHRTdG10oGhhdXRoRGF0YViUSZYN5YgOjGh0NBcPZHZgW4_krrmihjLHmVzzuoMdl2NdAAAAAOqbjWZNAR0hPOS2tIy1ddQAEI9RDRfmqA8n7lgG0EAKBHylAQIDJiABIVgglhFSZjnOlUX7rbnOWBYE5OyLg1rNdzLnCZaF74nPORwiWCCzHE9lmuQFbzHJMgKiD-kkbVbRzqj2Ue-NIDageYqE-Q",
-         * "clientDataJSON":
-         * "eyJ0eXBlIjoid2ViYXV0aG4uY3JlYXRlIiwiY2hhbGxlbmdlIjoiaHBwZFVyUFZSV2ltTnoyRW5ZR2ZVdUk0YUM3bjVtZWQwR0FVTWZTR2RkSSIsIm9yaWdpbiI6Imh0dHBzOi8vbG9jYWxob3N0Ojg0NDMiLCJjcm9zc09yaWdpbiI6ZmFsc2UsIm90aGVyX2tleXNfY2FuX2JlX2FkZGVkX2hlcmUiOiJkbyBub3QgY29tcGFyZSBjbGllbnREYXRhSlNPTiBhZ2FpbnN0IGEgdGVtcGxhdGUuIFNlZSBodHRwczovL2dvby5nbC95YWJQZXgifQ",
-         * "transports": [
-         * "hybrid",
-         * "internal"
-         * ]
-         * },
-         * "clientExtensionResults": {
-         * "prf": {
-         * "enabled": true
-         * }
-         * },
-         * "authenticatorAttachment": "cross-platform"
-         * },
-         * "label": "Registration Passkey"
-         * 
-         * private String id;
-         * private @Nullable PublicKeyCredentialType type;
-         * private Bytes rawId;
-         * private R response;
-         * private @Nullable AuthenticatorAttachment authenticatorAttachment;
-         * private @Nullable AuthenticationExtensionsClientOutputs
-         * clientExtensionResults;
-         * 
-         * 
-         * }
-         */
+            HttpServletRequest request,
+            HttpServletResponse response,
+            @RequestBody RegistrationRequest dto
+        ) {
 
-        // var response = AuthenticatorAttestationResponse.builder()
-        // .attestationObject(Bytes.fromBase64(email))
-        // .clientDataJSON(Bytes.fromBase64(email))
-        // .transports(List.of(AuthenticatorTransport.valueOf(email),
-        // AuthenticatorTransport.valueOf(email)))
-        // .build();
+        CredentialRecord cr = this.optionsService.getCredentialRecord(dto, request, response);
 
-        // PublicKeyCredential credentialKey = PublicKeyCredential
-        // .builder()
-        // .id(email)
-        // .rawId(Bytes.fromBase64(email))
-        // .type(PublicKeyCredentialType.PUBLIC_KEY)
-        // .response(response)
-        // .authenticatorAttachment(AuthenticatorAttachment.CROSS_PLATFORM)
-        // .build();
+        log.warn(cr);
 
-        log.info("Device Response: {}", email);
-
-        CredentialRecord cr = this.optionsService.getCredentialRecord(email, email.label(), request, response);
-
-        return ResponseEntity.ok(cr);
+        return ResponseEntity.status(HttpStatus.CREATED).body(cr);
     }
 
     @GetMapping("/install-cert")
@@ -121,7 +83,7 @@ public class RegisterController {
                 .body(file);
     }
 
-    @PostMapping("/registration/start")
+    @PostMapping("/registration/options")
     public ResponseEntity<PublicKeyCredentialCreationOptions> createRegistrationOptions(
             @RequestBody PasskeyRegistrationRequestDto dto,
             HttpServletRequest request,

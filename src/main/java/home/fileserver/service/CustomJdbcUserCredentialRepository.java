@@ -1,148 +1,198 @@
 package home.fileserver.service;
 
+import home.fileserver.dto.RegistrationRequest.PrfContext;
+import home.fileserver.models.User;
+import home.fileserver.models.UserCredential;
+import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.utilities.Longs;
 import jakarta.transaction.Transactional;
-import org.jspecify.annotations.Nullable;
-import org.springframework.dao.EmptyResultDataAccessException;
-import org.springframework.jdbc.core.JdbcTemplate;
-import org.springframework.jdbc.core.RowMapper;
 import org.springframework.security.web.webauthn.api.*;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.util.StringUtils;
 
-import java.sql.ResultSet;
-import java.sql.SQLException;
-import java.sql.Timestamp;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.springframework.stereotype.Component;
+import java.time.ZoneOffset;
 
+/**
+ * Adapts the standard Spring Security WebAuthn management to your JPA Entities.
+ * Includes support for Zero Knowledge (PRF) persistence.
+ */
+@Component
+@Transactional
 public class CustomJdbcUserCredentialRepository implements UserCredentialRepository {
-    private final JdbcTemplate jdbcTemplate;
+    public static final ScopedValue<PrfContext> PRF_SCOPE = ScopedValue.newInstance();
 
-    public CustomJdbcUserCredentialRepository(JdbcTemplate jdbcTemplate) {
-        this.jdbcTemplate = jdbcTemplate;
+    private final home.fileserver.repositories.UserCredentialRepository jpaCredentialRepo;
+    private final AppUserRepository userRepo;
+
+    public CustomJdbcUserCredentialRepository(home.fileserver.repositories.UserCredentialRepository jpaCredentialRepo,
+            AppUserRepository userRepo) {
+        this.jpaCredentialRepo = jpaCredentialRepo;
+        this.userRepo = userRepo;
     }
 
+    // =================================================================================
+    // 1. STANDARD SPRING SECURITY METHODS (Used for Login/Auth)
+    // =================================================================================
+
     @Override
-    @Transactional
     public void save(CredentialRecord record) {
-        // 1. CRITICAL: Convert WebAuthn ID (Bytes) -> Snowflake (Long)
-        // Spring's default impl would send a String here and break your DB.
-        long userId = Longs.fromByteArray(record.getUserEntityUserId().getBytes());
+        // This method is called by Spring Security to update counters (signature count)
+        // after a successful login. It DOES NOT handle PRF fields.
 
-        // 2. Flatten transports to simple CSV string
-        String transports = null;
-        record.getTransports();
-        transports = record.getTransports().stream()
-                .map(AuthenticatorTransport::getValue)
-                .collect(Collectors.joining(","));
-
-        // 3. Postgres "Upsert" (Cleaner than Spring's check-then-insert)
-        String sql = """
-            INSERT INTO user_credentials (
-                credential_id, user_id, public_key, label, signature_count,\s
-                uv_initialized, backup_eligible, backup_state, authenticator_transports,\s
-                attestation_object, attestation_client_data_json, created, last_used
-            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-            ON CONFLICT (credential_id) DO UPDATE SET
-                signature_count = EXCLUDED.signature_count,
-                last_used = EXCLUDED.last_used,
-                uv_initialized = EXCLUDED.uv_initialized,
-                backup_state = EXCLUDED.backup_state,
-                authenticator_transports = EXCLUDED.authenticator_transports
-       \s""";
-
-        // 4. No complex SqlParameterValue wrappers needed for Postgres Bytea
-        record.getLastUsed();
-        jdbcTemplate.update(sql,
-                record.getCredentialId().toBase64UrlString(), // ID is string in DB
-                userId,                                       // ID is Long in DB
-                record.getPublicKey().getBytes(),
-                record.getLabel(),
-                record.getSignatureCount(),
-                record.isUvInitialized(),
-                record.isBackupEligible(),
-                record.isBackupState(),
-                transports,
-                record.getAttestationObject() != null ? record.getAttestationObject().getBytes() : null,
-                record.getAttestationClientDataJSON() != null ? record.getAttestationClientDataJSON().getBytes() : null,
-                Timestamp.from(record.getCreated()),
-                Timestamp.from(record.getLastUsed())
-        );
+        // We find the existing entity and update it.
+        jpaCredentialRepo.findById(record.getCredentialId().toBase64UrlString())
+                .ifPresentOrElse(entity -> {
+                    entity.setSignatureCount(record.getSignatureCount());
+                    entity.setLastUsed(record.getLastUsed() != null
+                            ? java.time.LocalDateTime.ofInstant(record.getLastUsed(), ZoneOffset.UTC)
+                            : null);
+                    entity.setUvInitialized(record.isUvInitialized());
+                    entity.setBackupState(record.isBackupState());
+                    // We do NOT overwrite PRF fields here because 'record' doesn't have them.
+                    jpaCredentialRepo.save(entity);
+                }, () -> {
+                    // ✅ Read the Scope
+                    // .isBound() checks if we are inside a ScopedValue.where() block
+                    if (PRF_SCOPE.isBound()) {
+                        PrfContext ctx = PRF_SCOPE.get();
+                        // Pass the hidden data to your internal save logic
+                        doInternalSave(record, ctx.salt(), ctx.wrappedKey(), ctx.iv());
+                    } else {
+                        // Fallback: Standard save without PRF data
+                        throw new IllegalStateException("PRF Security Context is missing. Cannot save credential.");
+                    }
+                });
     }
 
     @Override
-    public @Nullable CredentialRecord findByCredentialId(Bytes credentialId) {
-        String sql = "SELECT * FROM user_credentials WHERE credential_id = ?";
-        try {
-            return jdbcTemplate.queryForObject(sql, new CredentialRecordMapper(), credentialId.toBase64UrlString());
-        } catch (EmptyResultDataAccessException e) {
-            return null;
-        }
+    public void delete(Bytes credentialId) {
+        jpaCredentialRepo.deleteById(credentialId.toBase64UrlString());
+    }
+
+    @Override
+    public CredentialRecord findByCredentialId(Bytes credentialId) {
+        return jpaCredentialRepo.findById(credentialId.toBase64UrlString())
+                .map(this::mapEntityToRecord)
+                .orElse(null);
     }
 
     @Override
     public List<CredentialRecord> findByUserId(Bytes userId) {
-        // 1. CRITICAL: Convert lookup ID (Bytes) -> Snowflake (Long)
+        // CRITICAL: Convert WebAuthn Bytes -> Snowflake Long
         long snowflakeId = Longs.fromByteArray(userId.getBytes());
-        
-        String sql = "SELECT * FROM user_credentials WHERE user_id = ?";
-        return jdbcTemplate.query(sql, new CredentialRecordMapper(), snowflakeId);
+
+        return jpaCredentialRepo.findByUserId(snowflakeId).stream()
+                .map(this::mapEntityToRecord)
+                .toList();
     }
 
-    @Override
-    @Transactional
-    public void delete(Bytes credentialId) {
-        String sql = "DELETE FROM user_credentials WHERE credential_id = ?";
-        jdbcTemplate.update(sql, credentialId.toBase64UrlString());
-    }
+    // =================================================================================
+    // 2. CUSTOM ZERO KNOWLEDGE METHOD (Used for Registration)
+    // =================================================================================
 
     /**
-     * Maps the SQL result back to Spring's object.
-     * Handles the Long -> Bytes conversion for you.
+     * Custom save method that handles PRF (Zero Knowledge) data.
+     * Call this from your RegistrationController instead of the standard save().
      */
-    private static class CredentialRecordMapper implements RowMapper<CredentialRecord> {
-        @Override
-        public CredentialRecord mapRow(ResultSet rs, int rowNum) throws SQLException {
-            
-            // A. Recover the User ID: BigInt -> byte[] -> Bytes
-            long userIdLong = rs.getLong("user_id");
-            Bytes userEntityUserId = new Bytes(Longs.toByteArray(userIdLong));
+    public void saveWithPrf(CredentialRecord record, String prfSalt, String prfWrappedKey, String prfIv) {
+        doInternalSave(record, prfSalt, prfWrappedKey, prfIv);
+    }
 
-            // B. Recover Transports
-            Set<AuthenticatorTransport> transports = new HashSet<>();
-            String transportsStr = rs.getString("authenticator_transports");
-            if (StringUtils.hasText(transportsStr)) {
-                for (String t : StringUtils.commaDelimitedListToStringArray(transportsStr)) {
-                    try {
-                        transports.add(AuthenticatorTransport.valueOf(t));
-                    } catch (IllegalArgumentException ignored) {
-                        // Ignore unknown transports (forward compatibility)
-                    }
+    private void doInternalSave(CredentialRecord record, String salt, String wrappedKey, String iv) {
+        // 1. Resolve User
+        long userId = Longs.fromByteArray(record.getUserEntityUserId().getBytes());
+        User user = userRepo.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found for ID: " + userId));
+
+        // 2. Flatten Transports
+        String transports = null;
+        if (record.getTransports() != null) {
+            transports = record.getTransports().stream()
+                    .map(AuthenticatorTransport::getValue)
+                    .collect(Collectors.joining(","));
+        }
+
+        // 3. Create or Update Entity
+        UserCredential entity = UserCredential.builder()
+                .credentialId(record.getCredentialId().toBase64UrlString())
+                .user(user)
+                .label(record.getLabel())
+                .publicKey(record.getPublicKey().getBytes())
+                .signatureCount(record.getSignatureCount())
+                .uvInitialized(record.isUvInitialized())
+                .backupEligible(record.isBackupEligible())
+                .backupState(record.isBackupState())
+                .authenticatorTransports(transports)
+
+                // PRF Fields (Zero Knowledge)
+                .prfSalt(salt)
+                .prfWrappedKey(wrappedKey)
+                .prfIv(iv)
+
+                // Attestation
+                .attestationObject(
+                        record.getAttestationObject() != null ? record.getAttestationObject().getBytes() : null)
+                .attestationClientDataJson(
+                        record.getAttestationClientDataJSON() != null ? record.getAttestationClientDataJSON().getBytes()
+                                : null)
+
+                // Dates
+                .created(java.time.LocalDateTime.ofInstant(record.getCreated(), ZoneOffset.UTC))
+                .lastUsed(record.getLastUsed() != null
+                        ? java.time.LocalDateTime.ofInstant(record.getLastUsed(), ZoneOffset.UTC)
+                        : null)
+                .build();
+
+        jpaCredentialRepo.save(entity);
+    }
+
+    // =================================================================================
+    // 3. MAPPER (Entity -> Spring Security Record)
+    // =================================================================================
+
+    private CredentialRecord mapEntityToRecord(UserCredential entity) {
+        // Convert Long ID -> Bytes
+        Bytes userIdBytes = new Bytes(Longs.toByteArray(entity.getUser().getId()));
+
+        // Parse Transports
+        Set<AuthenticatorTransport> transports = new HashSet<>();
+        if (StringUtils.hasText(entity.getAuthenticatorTransports())) {
+            for (String t : StringUtils.commaDelimitedListToStringArray(entity.getAuthenticatorTransports())) {
+                try {
+                    transports.add(AuthenticatorTransport.valueOf(t));
+                } catch (IllegalArgumentException ignored) {
+                    // Ignore unknown transports for forward compatibility
                 }
             }
-
-            // C. Build Record
-            // Note: Postgres driver handles getBytes("column") for 'bytea' perfectly.
-            return ImmutableCredentialRecord.builder()
-                    .credentialType(PublicKeyCredentialType.PUBLIC_KEY)
-                    .credentialId(Bytes.fromBase64(rs.getString("credential_id"))) // Assuming stored as Base64URL string
-                    .userEntityUserId(userEntityUserId)
-                    .publicKey(new ImmutablePublicKeyCose(rs.getBytes("public_key")))
-                    .label(rs.getString("label"))
-                    .signatureCount(rs.getLong("signature_count"))
-                    .uvInitialized(rs.getBoolean("uv_initialized"))
-                    .backupEligible(rs.getBoolean("backup_eligible"))
-                    .backupState(rs.getBoolean("backup_state"))
-                    .transports(transports)
-                    .attestationObject(rs.getBytes("attestation_object") != null ? new Bytes(rs.getBytes("attestation_object")) : null)
-                    .attestationClientDataJSON(rs.getBytes("attestation_client_data_json") != null ? new Bytes(rs.getBytes("attestation_client_data_json")) : null)
-                    .created(rs.getTimestamp("created").toInstant())
-                    .lastUsed(rs.getTimestamp("last_used") != null ? rs.getTimestamp("last_used").toInstant() : null)
-                    .build();
         }
+
+        return ImmutableCredentialRecord.builder()
+                .credentialId(Bytes.fromBase64(entity.getCredentialId()))
+                .userEntityUserId(userIdBytes)
+                .publicKey(new ImmutablePublicKeyCose(entity.getPublicKey()))
+                .signatureCount(entity.getSignatureCount())
+                .uvInitialized(entity.isUvInitialized())
+                .backupEligible(entity.isBackupEligible())
+                .backupState(entity.isBackupState())
+                .transports(transports)
+                .label(entity.getLabel())
+                // Attestation
+                .attestationObject(
+                        entity.getAttestationObject() != null ? new Bytes(entity.getAttestationObject()) : null)
+                .attestationClientDataJSON(
+                        entity.getAttestationClientDataJson() != null ? new Bytes(entity.getAttestationClientDataJson())
+                                : null)
+                // Dates
+                .created(entity.getCreated().toInstant(ZoneOffset.UTC))
+                .lastUsed(entity.getLastUsed() != null ? entity.getLastUsed().toInstant(ZoneOffset.UTC) : null)
+                // Note: PRF fields are NOT part of the standard CredentialRecord interface,
+                // so we don't map them here. They are used separately during encryption.
+                .build();
     }
 }

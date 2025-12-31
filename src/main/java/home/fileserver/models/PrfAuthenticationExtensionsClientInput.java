@@ -1,18 +1,16 @@
 package home.fileserver.models;
 
 import org.springframework.security.web.webauthn.api.AuthenticationExtensionsClientInput;
-import org.springframework.security.web.webauthn.api.Bytes;
-
 import java.io.Serializable;
 
-// 1. Change generic to the new wrapper class: PrfContainer
-public class PrfAuthenticationExtensionsClientInput implements AuthenticationExtensionsClientInput<PrfAuthenticationExtensionsClientInput.PrfContainer> {
+// 1. Change generic to the new wrapper class: PrfClientInputExtension
+public class PrfAuthenticationExtensionsClientInput implements AuthenticationExtensionsClientInput<PrfAuthenticationExtensionsClientInput.PrfClientInputExtension> {
 
-    private final PrfContainer container;
+    private final PrfClientInputExtension input;
 
     // Constructor accepts the inner values for convenience, but wraps them immediately
-    public PrfAuthenticationExtensionsClientInput(PrfValues values) {
-        this.container = new PrfContainer(values);
+    public PrfAuthenticationExtensionsClientInput(Eval values) {
+        this.input = new PrfClientInputExtension(values);
     }
 
     @Override
@@ -21,37 +19,31 @@ public class PrfAuthenticationExtensionsClientInput implements AuthenticationExt
     }
 
     @Override
-    public PrfContainer getInput() {
-        return this.container;
+    public PrfClientInputExtension getInput() {
+        return this.input;
     }
 
     // --- Layer 1: The Wrapper (Creates the "eval" key) ---
-    public static class PrfContainer implements Serializable {
-        private final PrfValues eval;
+    public static class PrfClientInputExtension implements Serializable {
+        private final Eval eval;
 
-        public PrfContainer(PrfValues eval) {
+        public PrfClientInputExtension(Eval eval) {
             this.eval = eval;
         }
 
         // This getter name generates the "eval" JSON key
-        public PrfValues getEval() {
+        public Eval getEval() {
             return eval;
         }
     }
 
     // --- Layer 2: The Values (Creates the "first" key) ---
-    public static class PrfValues implements Serializable {
-        private final Bytes first;
+    public static class Eval implements Serializable {
+        private static final String first = "";
 
-        public PrfValues(Bytes first) {
-            this.first = first;
-        }
+        public Eval() {}
 
-        public PrfValues(byte[] first) {
-            this.first = new Bytes(first);
-        }
-
-        public Bytes getFirst() {
+        public String getFirst() {
             return first;
         }
     }

@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="/css/style.css">
+    <title>Sign In</title>
+</head>
+
+<body>
+    <main class="main-container">
+        <div class="split-card">
+
+            <section class="info-panel">
+                <div class="info-content">
+                    <h2>What is a Passkey?</h2>
+                    <p>Say goodbye to complicated passwords. A Passkey is a modern, secure way to sign in using the
+                        device you already have in your hand.</p>
+
+                    <h3>How it works:</h3>
+                    <ul>
+                        <li>It uses your device's security (Face ID, Touch ID, or Windows Hello).</li>
+                        <li>It creates a unique cryptographic key pair just for this site.</li>
+                        <li>Your private key never leaves your device, making it phishing-resistant.</li>
+                    </ul>
+
+                    <div class="learn-more-wrapper">
+                        <a href="https://fidoalliance.org/passkeys/" target="_blank" rel="noopener noreferrer"
+                            class="learn-more-link">
+                            Learn more about Passkeys →
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <section class="form-panel">
+                <div class="form-header">
+                    <h1>Log in with a passkey.</h1>
+                    <p>It's quick and easy.</p>
+                    <p>Enter your email to start the login proccess.</p>
+                    <p>Finish by following your device's instructions.</p>
+                </div>
+
+                <form id="registerForm" class="auth-form" novalidate>
+
+                    <div class="form-group">
+                        <label for="email">Email Address</label>
+                        <input type="email" id="email" name="email" placeholder="you@example.com" required
+                            autocomplete="username webauthn">
+                        <span class="error-message" id="emailError"></span>
+                    </div>
+
+                    <div id="formFeedback" class="form-feedback hidden"></div>
+
+                    <button type="submit" id="submitBtn" class="btn-primary" disabled>
+                        <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px"
+                            fill="#ffffff">
+                            <path
+                                d="M120-160v-112q0-34 17.5-62.5T184-378q62-31 126-46.5T440-440q20 0 40 1.5t40 4.5q-4 58 21 109.5t73 84.5v80H120ZM760-40l-60-60v-186q-44-13-72-49.5T600-420q0-58 41-99t99-41q58 0 99 41t41 99q0 45-25.5 80T790-290l50 50-60 60 60 60-80 80ZM440-480q-66 0-113-47t-47-113q0-66 47-113t113-47q66 0 113 47t47 113q0 66-47 113t-113 47Zm300 80q17 0 28.5-11.5T780-440q0-17-11.5-28.5T740-480q-17 0-28.5 11.5T700-440q0 17 11.5 28.5T740-400Z" />
+                        </svg>
+                        <span class="btn-text">Sign In</span>
+                        <span class="spinner hidden"></span>
+                    </button>
+                </form>
+
+                <div class="auth-footer">
+                    <p>Create <a href="/register">an account using a Passkey.</a></p>
+                </div>
+                <div class="auth-footer">
+                    <p>Having trouble with SSL warnings?</p>
+                    <a href="/install-cert">
+                        Download Root CA
+                    </a>
+                </div>
+            </section>
+
+        </div>
+    </main>
+
+    <script type="module" src="/js/login.js"></script>
+</body>
+
+</html>

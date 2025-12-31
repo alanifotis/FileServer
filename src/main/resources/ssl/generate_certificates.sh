@@ -42,6 +42,8 @@ DNS_LIST=(
   $DOMAIN
   "desktop.local"
   "witt-solutions.local"
+  "alanis-laptop.local"
+  "home.local"
 )
 
 # Network Configuration (Add your IPs here)
@@ -184,6 +186,9 @@ echo -e "${GREEN}Success!${NC}"
 echo "CA Certificate:     $CA_PEM (Import this to your OS/Browser Trust Store)"
 echo "Server Certificate: $SERVER_P12 (Use this in Spring Boot)"
 echo "--------------------------------------------------------"
+
+echo -e "${GREEN}Copying new Certificate to the cert PATH.${NC}"
+cp "$CA_PEM" ../certs/
 
 # Reminder to not push private keys to Git
 echo -e "${RED}IMPORTANT: Add *.key, *.pem, and *.p12 to your .gitignore!${NC}"

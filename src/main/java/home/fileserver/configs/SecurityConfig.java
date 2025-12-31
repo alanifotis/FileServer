@@ -3,31 +3,33 @@ package home.fileserver.configs;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.webauthn.jackson.WebauthnJacksonModule;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
+import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
 import home.fileserver.utilities.SpaCsrfTokenRequestHandler;
 import lombok.extern.log4j.Log4j2;
+import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
-// Only enable if there is already a passkey registered
-// @EnableMultiFactorAuthentication(
-// authorities = { FactorGrantedAuthority.OTT_AUTHORITY,
-// FactorGrantedAuthority.WEBAUTHN_AUTHORITY })
 @Log4j2
 class SecurityConfiguration {
 
     private final String[] ALLOWED_PATHS = {
             "/",
             "/login",
+            "/login/options",
+            "/login.html",
             "/register",
             "/register.html",
-            "/registration/start",
+            "/registration/options",
             "/install-cert",
             "/favicon.ico",
             "/index.html",
@@ -53,8 +55,8 @@ class SecurityConfiguration {
     SecurityFilterChain securityFilterChain(
             HttpSecurity http,
             UserCredentialRepository userCredentialRepository,
-            PublicKeyCredentialCreationOptionsRepository creationOptionsRepository
-    ) throws Exception {
+            PublicKeyCredentialCreationOptionsRepository creationOptionsRepository,
+            WebauthnJacksonModule webauthnModule) throws Exception {
         log.info("RpID: {}, class: {}", rpEntityId, this.getClass().getName());
 
         return http
@@ -63,16 +65,16 @@ class SecurityConfiguration {
                     auth.requestMatchers(ALLOWED_PATHS).permitAll();
                     auth.anyRequest().authenticated();
                 })
-                .formLogin(withDefaults())
                 .webAuthn(passkeys -> {
                     passkeys.rpId(rpEntityId);
                     passkeys.allowedOrigins(ALLOWED_HOSTS);
                     passkeys.creationOptionsRepository(creationOptionsRepository);
                     passkeys.disableDefaultRegistrationPage(true);
-                    // HttpMessageConverter<Object> converter = new JacksonJsonHttpMessageConverter(JsonMapper.builder().addModule(new WebauthnJacksonModule()).build());
-                    // passkeys.messageConverter(converter);
+                    HttpMessageConverter<Object> converter = new JacksonJsonHttpMessageConverter(
+                            JsonMapper.builder().addModule(webauthnModule).build());
+                    passkeys.messageConverter(converter);
                 })
-                .logout(logout -> logout.logoutSuccessUrl("/login"))
+                .logout(logout -> logout.logoutSuccessUrl("/"))
                 .csrf(csrf -> {
                     var repo = new CookieCsrfTokenRepository();
                     repo.setCookieCustomizer(c -> c.httpOnly(false)

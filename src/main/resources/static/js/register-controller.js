@@ -1,5 +1,8 @@
 import webauthnService from "./services/webauthn-service.js";
-import http from "./utils/http.js"; 
+import http from "./utils/http.js";
+import abortController from "./utils/abort-controller.js";
+import base64url from "./utils/base64url.js";
+
 
 const regex = /(?:(?:^|.*;\s*)XSRF-TOKEN\s*\=\s*([^;]*).*$)|^.*$/;
 
@@ -56,7 +59,7 @@ function setLoading(ui, isLoading) {
 
 // --- Main Controller Logic ---
 document.addEventListener('DOMContentLoaded', async () => {
-    
+
     // 1. Define the UI Object
     // This creates a single source of truth for all DOM elements
     const ui = {
@@ -65,7 +68,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         emailInput: document.getElementById('email'),
         // We assume you have split your feedback area into two divs in HTML for better styling,
         // or we map them to the same one if you prefer.
-        errorArea: document.getElementById('formFeedback'), 
+        errorArea: document.getElementById('formFeedback'),
         successArea: document.getElementById('formFeedback'), // Reusing the same div for now
         spinner: document.querySelector('.spinner')
     };
@@ -87,7 +90,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 4. Form Submission
     ui.form.addEventListener('submit', async (e) => {
         e.preventDefault();
-        
+
         if (!ui.emailInput.checkValidity()) {
             ui.emailInput.reportValidity();
             return;
@@ -95,7 +98,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         const email = ui.emailInput.value;
         const csrfToken = getCsrfToken();
-        
+
         // Fail fast if CSRF is missing
         if (!csrfToken) {
             setError(ui, "Security Error: Missing CSRF Token. Please refresh the page.");
@@ -103,48 +106,69 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
 
         const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken };
-        
+
         resetPopups(ui);
         setLoading(ui, true);
 
         try {
             // Step A: Get Options
             // We use the email to identify the user
-            const options = await webauthnService.getRegistrationOptions(
-                headers, 
-                '/registration/start',
-                { email: email, userAgent: navigator.userAgent }
+            const registrationOptions = await webauthnService.getRegistrationOptions(
+                headers,
+                '/registration/options',
+                { email: email }
             );
 
-            // Step B: The Dance
-            const credentials = await webauthnService.createPasskey(options);
+            const salt = crypto.getRandomValues(new Uint8Array(32));
 
-            // Step C: Send to Custom Endpoint
-            const payload = {
-                email: email,
-                label: "Registration Passkey",
-                credentials: credentials
-            };
+            registrationOptions.extensions.prf.eval.first = salt;
 
-            console.warn(payload);
 
-            const response = await http.post('/register', headers, payload);
-            
-            if (!response.ok) {
-                const errData = await response.json().catch(() => ({}));
-                throw new Error(errData.message || "Registration failed");
+            const credentials = await webauthnService.createPasskey(registrationOptions);
+
+
+            const prfResult = await webauthnService.createPrfSecretKey(credentials.getClientExtensionResults(), credentials.rawId, salt);
+
+            let encryptionPayload = null;
+
+            if (prfResult) {
+                setError(ui, base64url.encode(prfResult), "success");
+                encryptionPayload = await webauthnService.createPayload(salt, prfResult);
+            } else {
+                setError(ui, "Your device does not support secure encryption (PRF). Registration cancelled.", "error");
+                throw new Error("Your device does not support secure encryption (PRF). Registration cancelled.");
             }
 
+            const payload = {
+                email: email,
+                credentials: credentials,
+                ...encryptionPayload
+            }
+
+
+            const request = {
+                method: "POST",
+                headers: {
+                    ...headers,
+                },
+                body: JSON.stringify(payload)
+            };
+
+            const credentialRecord = await fetch('/register', request);
+
+            if (!credentialRecord.ok) {
+                setError(ui, credentialRecord.statusText, 'error');
+            }
             // Success
-            setSuccess(ui, "Account created successfully! Redirecting...");
+            // setSuccess(ui, "Account created successfully! Redirecting...");
             // setTimeout(() => window.location.href = '/login', 2000);
 
         } catch (error) {
             console.error(error);
             if (error.name === 'NotAllowedError') {
-                setError(ui, "Setup cancelled.");
+                setError(ui, "Setup cancelled.", "error");
             } else {
-                setError(ui, error.message || "An unexpected error occurred.");
+                setError(ui, error.message || "An unexpected error occurred.", "error");
             }
         } finally {
             setLoading(ui, false);
