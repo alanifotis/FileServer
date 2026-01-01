@@ -55,18 +55,18 @@ async function getRegistrationOptions(headers, endpoint, email) {
 
 async function getLoginOptions(headers, endpoint, email) {
   try {
-    const response = await http.post(endpoint, headers, email);
+    let response = await http.post(endpoint, headers, email);
     if (!response.ok) {
       throw new Error(`Server error: ${response.status}\n ${response.text().then((text) => {
         console.error(`Server Message: ${text}`);
       })}`);
     }
 
-    const options = await response.json();
+    response = await response.json();
 
-    const defResponse = PublicKeyCredential.parseRequestOptionsFromJSON(options);
+    const options = PublicKeyCredential.parseRequestOptionsFromJSON(response.options);
 
-    return defResponse;
+    return {options: options, authContexts: response.authContexts};
 
   } catch (err) {
     throw new Error(`Failed to fetch options: ${err.message}`, { cause: err });
@@ -158,8 +158,24 @@ async function createPayload(salt, prfResult) {
   return payload;
 }
 
-async function login(email, passkey) {
-  
+async function login(endpoint, headers, assertionCredetials) {
+  try {
+    let response = await http.post(endpoint, headers, assertionCredetials);
+    if (!response.ok) {
+      throw new Error(`Server error: ${response.status}\n ${response.text().then((text) => {
+        console.error(`Server Message: ${text}`);
+      })}`);
+    }
+
+    response = await response.json();
+
+    // const options = PublicKeyCredential.parseRequestOptionsFromJSON(response.options);
+
+    return;
+
+  } catch (err) {
+    throw new Error(`Failed to fetch options: ${err.message}`, { cause: err });
+  }
 }
 
 export default {
@@ -168,5 +184,6 @@ export default {
   getLoginOptions,
   createPasskey,
   createPrfSecretKey,
-  createPayload
+  createPayload,
+  login
 };

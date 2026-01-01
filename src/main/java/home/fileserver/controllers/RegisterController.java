@@ -1,5 +1,6 @@
 package home.fileserver.controllers;
 
+import home.fileserver.dto.LoginOptionsResponse;
 import home.fileserver.dto.PasskeyRegistrationRequestDto;
 import home.fileserver.dto.RegistrationRequest;
 import home.fileserver.service.CustomPublicKeyCredentialCreationOptionsService;
@@ -13,9 +14,11 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.web.webauthn.api.AuthenticatorAssertionResponse;
 import org.springframework.security.web.webauthn.api.CredentialRecord;
+import org.springframework.security.web.webauthn.api.PublicKeyCredential;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
-import org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -38,10 +41,19 @@ public class RegisterController {
         return "forward:/login.html";
     }
 
+    @PostMapping("/login")
+    public ResponseEntity<Authentication> postMethodName(HttpServletRequest request, HttpServletResponse response, @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
+        
+        Authentication auth = optionsService.login(assertion, request, response);
+        return ResponseEntity.ok(auth);
+    }
+
     @PostMapping("/login/options")
-    public ResponseEntity<PublicKeyCredentialRequestOptions> getLoginOptions(@RequestBody PasskeyRegistrationRequestDto dto, HttpServletRequest request, HttpServletResponse response) {
+    public ResponseEntity<LoginOptionsResponse> getLoginOptions(@RequestBody PasskeyRegistrationRequestDto dto,
+            HttpServletRequest request, HttpServletResponse response) {
         log.warn("Received Email: {}", dto.email());
-        PublicKeyCredentialRequestOptions options = this.optionsService.getPublicKeyCredentialRequestOptions(dto.email() , request, response);
+        LoginOptionsResponse options = this.optionsService.getPublicKeyCredentialRequestOptions(dto.email(), request,
+                response);
 
         return ResponseEntity.ok(options);
     }
@@ -51,8 +63,7 @@ public class RegisterController {
     public ResponseEntity<CredentialRecord> postMethodName(
             HttpServletRequest request,
             HttpServletResponse response,
-            @RequestBody RegistrationRequest dto
-        ) {
+            @RequestBody RegistrationRequest dto) {
 
         CredentialRecord cr = this.optionsService.getCredentialRecord(dto, request, response);
 

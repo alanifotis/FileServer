@@ -4,18 +4,22 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.HttpMessageConverter;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
-import org.springframework.security.web.webauthn.jackson.WebauthnJacksonModule;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
 import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
+import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.utilities.SpaCsrfTokenRequestHandler;
 import lombok.extern.log4j.Log4j2;
+import tools.jackson.databind.ObjectMapper;
 import tools.jackson.databind.json.JsonMapper;
 
 @Configuration
@@ -27,6 +31,7 @@ class SecurityConfiguration {
             "/login",
             "/login/options",
             "/login.html",
+            "/login/webauthn",
             "/register",
             "/register.html",
             "/registration/options",
@@ -56,8 +61,7 @@ class SecurityConfiguration {
             HttpSecurity http,
             UserCredentialRepository userCredentialRepository,
             PublicKeyCredentialCreationOptionsRepository creationOptionsRepository,
-            WebauthnJacksonModule webauthnModule) throws Exception {
-        log.info("RpID: {}, class: {}", rpEntityId, this.getClass().getName());
+            ObjectMapper mapper) throws Exception {
 
         return http
                 .redirectToHttps(withDefaults())
@@ -65,13 +69,15 @@ class SecurityConfiguration {
                     auth.requestMatchers(ALLOWED_PATHS).permitAll();
                     auth.anyRequest().authenticated();
                 })
+                .formLogin(formLogin -> formLogin.disable())
                 .webAuthn(passkeys -> {
                     passkeys.rpId(rpEntityId);
                     passkeys.allowedOrigins(ALLOWED_HOSTS);
                     passkeys.creationOptionsRepository(creationOptionsRepository);
                     passkeys.disableDefaultRegistrationPage(true);
                     HttpMessageConverter<Object> converter = new JacksonJsonHttpMessageConverter(
-                            JsonMapper.builder().addModule(webauthnModule).build());
+                        (JsonMapper) mapper
+                    );
                     passkeys.messageConverter(converter);
                 })
                 .logout(logout -> logout.logoutSuccessUrl("/"))
@@ -86,6 +92,16 @@ class SecurityConfiguration {
                     csrf.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler());
                 })
                 .build();
+    }
+
+    @Bean
+    public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
+        return config.getAuthenticationManager();
+    }
+
+    @Bean
+    UserDetailsService userDetailsService(AppUserRepository userRepo) {
+        return email -> userRepo.findByEmail(email); 
     }
 
 }

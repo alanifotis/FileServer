@@ -120,9 +120,20 @@ document.addEventListener('DOMContentLoaded', async () => {
             );
 
             const credentialOptions = {
-                publicKey: loginOptions,
-                signal: abortController.newSignal()
+                publicKey: loginOptions.options,
+                signal: abortController.newSignal(),
+                mediation: "required"
             };
+
+            for (let credId in loginOptions.authContexts) {
+                const context = loginOptions.authContexts[credId];
+
+                if (typeof context.salt === 'string') {
+                    context.salt = base64url.decode(context.salt);
+                    context.wrappedKey = base64url.decode(context.wrappedKey);
+                    context.iv = base64url.decode(context.iv);
+                }
+            }
 
             // const useConditionalMediation = await webauthnService.checkPrfSupport();
 
@@ -136,13 +147,34 @@ document.addEventListener('DOMContentLoaded', async () => {
 
 
 
-            const attestationResponse = await navigator.credentials.get(credentialOptions);
+            const assertionResponse = await navigator.credentials.get(credentialOptions);
 
-            console.log(attestationResponse, attestationResponse.getClientExtensionResults());
+            await webauthnService.login('/login', headers, assertionResponse);
+
+            console.log(assertionResponse, base64url.encode(assertionResponse.getClientExtensionResults().prf.results.first));
+
+            const auth = loginOptions.authContexts[assertionResponse.id];
+
+            console.log(auth);
+
+            const keyEncryptionKey = await crypto.subtle.importKey(
+                "raw",
+                assertionResponse.getClientExtensionResults().prf.results.first,
+                "AES-GCM",
+                false,
+                ["decrypt"]
+            );
+
+            const unwrappedKeyBuffer = await crypto.subtle.decrypt(
+                { name: "AES-GCM", iv: auth.iv },
+                keyEncryptionKey,
+                auth.wrappedKey
+            );
+
+            console.log(base64url.encode(unwrappedKeyBuffer));
 
 
 
-            const salt = crypto.getRandomValues(new Uint8Array(32));
 
             // registrationOptions.extensions.prf.eval.first = salt;
 

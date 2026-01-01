@@ -27,7 +27,7 @@ public class JacksonConfig {
     }
 
     @Bean
-    public ObjectMapper gObjectMapper(WebauthnJacksonModule module) {
+    public ObjectMapper getObjectMapper(WebauthnJacksonModule module) {
         ClassLoader loader = getClass().getClassLoader();
         BasicPolymorphicTypeValidator.Builder typeValidatorBuilder = BasicPolymorphicTypeValidator.builder()
         .allowIfSubType(SimpleGrantedAuthority.class)

@@ -1,7 +1,9 @@
 package home.fileserver.service;
 
+import home.fileserver.dto.LoginOptionsResponse;
 import home.fileserver.dto.PasskeyRegistrationRequestDto;
 import home.fileserver.dto.RegistrationRequest;
+import home.fileserver.dto.RegistrationRequest.PrfContext;
 import home.fileserver.models.CredPropsAuthenticationExtensionsClientInput;
 import home.fileserver.models.PrfAuthenticationExtensionsClientInput;
 import home.fileserver.models.PrfAuthenticationExtensionsClientInput.Eval;
@@ -14,9 +16,15 @@ import home.fileserver.utilities.Snowflake;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+
+import org.springframework.security.authentication.AuthenticationProvider;
+import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.core.Authentication;
 import org.springframework.security.web.webauthn.api.*;
 import org.springframework.security.web.webauthn.authentication.PublicKeyCredentialRequestOptionsRepository;
+import org.springframework.security.web.webauthn.authentication.WebAuthnAuthenticationRequestToken;
 import org.springframework.security.web.webauthn.management.ImmutableRelyingPartyRegistrationRequest;
+import org.springframework.security.web.webauthn.management.RelyingPartyAuthenticationRequest;
 import org.springframework.security.web.webauthn.management.RelyingPartyPublicKey;
 import org.springframework.security.web.webauthn.management.WebAuthnRelyingPartyOperations;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
@@ -43,6 +51,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         private final PublicKeyCredentialRpEntity rpEntity;
         private final UserCredentialRepository credentialRepository;
         private final PublicKeyCredentialRequestOptionsRepository requestOptionsRepository;
+        private final AuthenticationProvider authenticationManager;
 
         private static final String LABEL = "Registration Key";
 
@@ -68,7 +77,8 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 // ES384 -35 SHA-384 ECDSA w/ SHA-384
                 // ES512 -36 SHA-512 ECDSA w/ SHA-512
                 List<PublicKeyCredentialParameters> publicKeyCredentialParameters = new ArrayList<>(
-                                List.of(PublicKeyCredentialParameters.EdDSA,
+                                List.of(
+                                                PublicKeyCredentialParameters.EdDSA,
                                                 PublicKeyCredentialParameters.ES256,
                                                 PublicKeyCredentialParameters.ES384,
                                                 PublicKeyCredentialParameters.ES512,
@@ -134,7 +144,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 return savedRecord;
         }
 
-        public PublicKeyCredentialRequestOptions getPublicKeyCredentialRequestOptions(String email,
+        public LoginOptionsResponse getPublicKeyCredentialRequestOptions(String email,
                         HttpServletRequest request,
                         HttpServletResponse response) {
 
@@ -152,10 +162,11 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 Map<String, Object> evalByCredentialMap = new HashMap<>();
 
+                Map<String, PrfContext> prfContextMap = new HashMap<>();
+
                 List<PublicKeyCredentialDescriptor> allowCredentials = new ArrayList<>();
 
                 for (UserCredential cred : credentials) {
-                        
 
                         Set<AuthenticatorTransport> transports = new HashSet<>();
                         if (StringUtils.hasText(cred.getAuthenticatorTransports())) {
@@ -169,12 +180,16 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                                 }
                         }
 
+                        prfContextMap.put(cred.getCredentialId(),
+                                        new PrfContext(cred.getPrfSalt(), cred.getPrfWrappedKey(), cred.getPrfIv()));
+
                         // A. Add to Allow List
-                        allowCredentials.add(PublicKeyCredentialDescriptor.builder()
-                                        .id(Bytes.fromBase64(cred.getCredentialId()))
-                                        .type(PublicKeyCredentialType.PUBLIC_KEY)
-                                        .transports(transports)
-                                        .build());
+                        allowCredentials.add(
+                                        PublicKeyCredentialDescriptor.builder()
+                                                        .id(Bytes.fromBase64(cred.getCredentialId()))
+                                                        .type(PublicKeyCredentialType.PUBLIC_KEY)
+                                                        .transports(transports)
+                                                        .build());
 
                         // B. Add to PRF Map
                         // We map THIS specific Credential ID to THIS specific Salt
@@ -182,7 +197,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                         evalByCredentialMap.put(
                                         cred.getCredentialId(), // The Key: Base64URL ID
-                                        Map.of("first",  specificSalt) // The Value: Input for PRF
+                                        Map.of("first", specificSalt) // The Value: Input for PRF
                         );
                 }
 
@@ -202,7 +217,27 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 this.requestOptionsRepository.save(request, response, options);
 
-                return options;
+                return new LoginOptionsResponse(options, prfContextMap);
+        }
+
+        public Authentication login(PublicKeyCredential<AuthenticatorAssertionResponse> assertion,
+                        HttpServletRequest request, HttpServletResponse response) {
+                PublicKeyCredentialRequestOptions options = this.requestOptionsRepository.load(request);
+
+                if (options == null) {
+                        throw new BadCredentialsException(
+                                        "Unable to authenticate the PublicKeyCredential. No PublicKeyCredentialRequestOptions found.");
+                }
+
+                this.requestOptionsRepository.save(request, response, null);
+
+                RelyingPartyAuthenticationRequest authenticationRequest = new RelyingPartyAuthenticationRequest(options,
+                                assertion);
+                WebAuthnAuthenticationRequestToken token = new WebAuthnAuthenticationRequestToken(
+                                authenticationRequest);
+
+                return this.authenticationManager.authenticate(token);
+
         }
 
         private AuthenticationExtensionsClientInputs getAuthenticationExtensionsClientInputs() {
