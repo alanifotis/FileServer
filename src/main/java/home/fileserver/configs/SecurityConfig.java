@@ -7,8 +7,8 @@ import org.springframework.http.converter.HttpMessageConverter;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
-import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
@@ -16,7 +16,6 @@ import org.springframework.http.converter.json.JacksonJsonHttpMessageConverter;
 
 import static org.springframework.security.config.Customizer.withDefaults;
 
-import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.utilities.SpaCsrfTokenRequestHandler;
 import lombok.extern.log4j.Log4j2;
 import tools.jackson.databind.ObjectMapper;
@@ -28,6 +27,7 @@ class SecurityConfiguration {
 
     private final String[] ALLOWED_PATHS = {
             "/",
+            "/api/me",
             "/login",
             "/login/options",
             "/login.html",
@@ -69,6 +69,7 @@ class SecurityConfiguration {
                     auth.requestMatchers(ALLOWED_PATHS).permitAll();
                     auth.anyRequest().authenticated();
                 })
+                .securityContext(context -> context.securityContextRepository(new HttpSessionSecurityContextRepository()))
                 .formLogin(formLogin -> formLogin.disable())
                 .webAuthn(passkeys -> {
                     passkeys.rpId(rpEntityId);
@@ -98,10 +99,4 @@ class SecurityConfiguration {
     public AuthenticationManager authenticationManager(AuthenticationConfiguration config) throws Exception {
         return config.getAuthenticationManager();
     }
-
-    @Bean
-    UserDetailsService userDetailsService(AppUserRepository userRepo) {
-        return email -> userRepo.findByEmail(email); 
-    }
-
 }

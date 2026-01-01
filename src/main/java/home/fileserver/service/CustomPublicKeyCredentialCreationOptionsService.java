@@ -19,7 +19,12 @@ import lombok.RequiredArgsConstructor;
 
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContext;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.webauthn.api.*;
 import org.springframework.security.web.webauthn.authentication.PublicKeyCredentialRequestOptionsRepository;
 import org.springframework.security.web.webauthn.authentication.WebAuthnAuthenticationRequestToken;
@@ -52,6 +57,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         private final UserCredentialRepository credentialRepository;
         private final PublicKeyCredentialRequestOptionsRepository requestOptionsRepository;
         private final AuthenticationProvider authenticationManager;
+        private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
         private static final String LABEL = "Registration Key";
 
@@ -236,7 +242,24 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 WebAuthnAuthenticationRequestToken token = new WebAuthnAuthenticationRequestToken(
                                 authenticationRequest);
 
-                return this.authenticationManager.authenticate(token);
+                Authentication authResult = this.authenticationManager.authenticate(token);
+
+                User user = this.userRepository.findByEmail(authResult.getName());
+
+                Authentication fullAuth = new UsernamePasswordAuthenticationToken(
+                                user, 
+                                authResult.getCredentials(),
+                                authResult.getAuthorities()
+                );
+
+                SecurityContext context = SecurityContextHolder.createEmptyContext();
+                context.setAuthentication(fullAuth);
+
+                SecurityContextHolder.setContext(context);
+
+                this.securityContextRepository.saveContext(context, request, response);
+
+                return fullAuth;
 
         }
 

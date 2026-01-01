@@ -15,6 +15,7 @@ import org.springframework.security.web.webauthn.management.Webauthn4JRelyingPar
 import org.springframework.security.web.webauthn.registration.HttpSessionPublicKeyCredentialCreationOptionsRepository;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
 
+import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.service.CustomJdbcUserCredentialRepository;
 import home.fileserver.utilities.CustomUserEntityRepository;
 
@@ -57,7 +58,13 @@ public class PublicKeyCredentialsConfiguration {
 
     @Bean
     public AuthenticationProvider getWebAuthnAuthenticationProvider(WebAuthnRelyingPartyOperations webAuthnRelyingPartyOperations, UserDetailsService userDetailsService) throws Exception {
+
         return new WebAuthnAuthenticationProvider(webAuthnRelyingPartyOperations, userDetailsService);
+    }
+
+    @Bean
+    UserDetailsService userDetailsService(AppUserRepository userRepo) {
+        return email -> userRepo.findByEmail(email); 
     }
 
 

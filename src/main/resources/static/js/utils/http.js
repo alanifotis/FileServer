@@ -16,17 +16,24 @@
 
 "use strict";
 
-async function post(url, headers, body) {
+async function post(url, headers, body, method = "POST", credentials = false) {
+  
   const options = {
-    method: "POST",
+    method: method,
     headers: {
-      "Content-Type": "application/json",
       ...headers,
     },
   };
+  
   if (body) {
     options.body = JSON.stringify(body);
   }
+
+  if (credentials) {
+    options.credentials = 'include';
+  }
+
+
   return fetch(url, options);
 }
 

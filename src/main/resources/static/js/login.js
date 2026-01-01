@@ -171,47 +171,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             const okResponse = await webauthnService.login('/login', headers, assertionResponse);
 
-            // registrationOptions.extensions.prf.eval.first = salt;
-
-
-            // const credentials = await webauthnService.createPasskey(registrationOptions);
-
-
-            // const prfResult = await webauthnService.createPrfSecretKey(credentials.getClientExtensionResults(), credentials.rawId, salt);
-
-            // let encryptionPayload = null;
-
-            // if (prfResult) {
-            //     setError(ui, base64url.encode(prfResult), "success");
-            //     encryptionPayload = await webauthnService.createPayload(salt, prfResult);
-            // } else {
-            //     setError(ui, "Your device does not support secure encryption (PRF). Registration cancelled.", "error");
-            //     throw new Error("Your device does not support secure encryption (PRF). Registration cancelled.");
-            // }
-
-            // const payload = {
-            //     email: email,
-            //     credentials: credentials,
-            //     ...encryptionPayload
-            // }
-
-
-            // const request = {
-            //     method: "POST",
-            //     headers: {
-            //         ...headers,
-            //     },
-            //     body: JSON.stringify(payload)
-            // };
-
-            // const credentialRecord = await fetch('/register', request);
-
-            // if (!credentialRecord.ok) {
-            //     setError(ui, credentialRecord.statusText, 'error');
-            // }
-            // Success
             setError(ui, "Loged in successfully! Redirecting...", "success");
-            setTimeout(() => window.location.href = '/', 2000);
+
+            let whoI = await http.post('/api/me', headers, null, "GET", true);
+
+            whoI = await whoI.json();
+
+            console.log(whoI);
+
+            setTimeout(() => window.location.href = '/api/me', 2000);
 
         } catch (error) {
             console.error(error);
