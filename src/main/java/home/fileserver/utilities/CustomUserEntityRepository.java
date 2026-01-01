@@ -108,11 +108,9 @@ public class CustomUserEntityRepository implements PublicKeyCredentialUserEntity
      * Converts your JPA User entity into the object Spring WebAuthn expects.
      */
     private PublicKeyCredentialUserEntity mapToWebAuthnUser(@NonNull User user) {
-        // Convert Long Snowflake -> 8 Bytes
-        Bytes webAuthnId = new Bytes(Longs.toByteArray(user.getId()));
 
         return ImmutablePublicKeyCredentialUserEntity.builder()
-                .id(webAuthnId)
+                .id(user.getByteId())
                 .name(user.getEmail())
                 .displayName(user.getDisplayName())
                 .build();

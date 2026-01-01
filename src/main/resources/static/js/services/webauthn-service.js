@@ -171,7 +171,7 @@ async function login(endpoint, headers, assertionCredetials) {
 
     // const options = PublicKeyCredential.parseRequestOptionsFromJSON(response.options);
 
-    return;
+    return response;
 
   } catch (err) {
     throw new Error(`Failed to fetch options: ${err.message}`, { cause: err });

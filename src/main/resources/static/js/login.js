@@ -52,7 +52,7 @@ function setLoading(ui, isLoading) {
         ui.submitBtn.querySelector('.btn-text').textContent = 'Check your device...';
         ui.spinner.classList.remove('hidden');
     } else {
-        ui.submitBtn.querySelector('.btn-text').textContent = 'Create Passkey';
+        ui.submitBtn.querySelector('.btn-text').textContent = 'Sing In';
         ui.spinner.classList.add('hidden');
     }
 }
@@ -145,11 +145,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             console.log(credentialOptions);
 
-
-
             const assertionResponse = await navigator.credentials.get(credentialOptions);
-
-            await webauthnService.login('/login', headers, assertionResponse);
 
             console.log(assertionResponse, base64url.encode(assertionResponse.getClientExtensionResults().prf.results.first));
 
@@ -173,8 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             console.log(base64url.encode(unwrappedKeyBuffer));
 
-
-
+            const okResponse = await webauthnService.login('/login', headers, assertionResponse);
 
             // registrationOptions.extensions.prf.eval.first = salt;
 
@@ -215,8 +210,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             //     setError(ui, credentialRecord.statusText, 'error');
             // }
             // Success
-            // setSuccess(ui, "Account created successfully! Redirecting...");
-            // setTimeout(() => window.location.href = '/login', 2000);
+            setError(ui, "Loged in successfully! Redirecting...", "success");
+            setTimeout(() => window.location.href = '/', 2000);
 
         } catch (error) {
             console.error(error);
