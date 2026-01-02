@@ -1,0 +1,235 @@
+:root {
+    --primary: #4f46e5; /* Indigo */
+    --primary-light: #e0e7ff;
+    --bg-app: #f3f4f6;
+    --bg-card: #ffffff;
+    --text-main: #1f2937;
+    --text-sub: #6b7280;
+    --border: #e5e7eb;
+    --shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    --radius: 12px;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background-color: var(--bg-app);
+    color: var(--text-main);
+    height: 100vh;
+    padding: 2rem;
+    display: flex;
+    justify-content: center;
+}
+
+.app-container {
+    width: 100%;
+    max-width: 1000px;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+/* --- 1. UPLOAD AREA (Modern Drop Zone) --- */
+.upload-area {
+    flex: 0 0 35%; /* Top 35% height */
+    background-color: var(--bg-card);
+    border: 2px dashed var(--border);
+    border-radius: var(--radius);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s ease;
+    cursor: pointer;
+    position: relative;
+}
+
+.upload-area:hover, .upload-area.drag-active {
+    border-color: var(--primary);
+    background-color: var(--primary-light);
+}
+
+.upload-content {
+    text-align: center;
+    pointer-events: none; /* Let clicks pass through to container */
+}
+
+.upload-icon {
+    width: 48px;
+    height: 48px;
+    color: var(--primary);
+    margin-bottom: 1rem;
+}
+
+.upload-content h2 { font-size: 1.25rem; font-weight: 600; }
+.upload-content p { color: var(--text-sub); margin-top: 0.5rem; }
+
+/* Progress Bar */
+#progress-bar-container {
+    width: 200px;
+    height: 6px;
+    background: #eee;
+    border-radius: 3px;
+    margin: 15px auto 0;
+    display: none; /* Hidden by default */
+}
+
+#progress-bar {
+    height: 100%;
+    background: var(--primary);
+    width: 0%;
+    transition: width 0.2s ease;
+}
+
+/* --- 2. BROWSER WINDOW (Grid + List) --- */
+.browser-window {
+    flex: 1;
+    background-color: var(--bg-card);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--border);
+}
+
+.browser-header {
+    padding: 1rem 1.5rem;
+    border-bottom: 1px solid var(--border);
+}
+
+.breadcrumb { font-weight: 500; font-size: 0.9rem; }
+.breadcrumb .root { color: var(--text-sub); }
+.breadcrumb .separator { margin: 0 8px; color: var(--border); }
+.breadcrumb .current { color: var(--text-main); }
+
+.section-label {
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--text-sub);
+    margin-bottom: 1rem;
+}
+
+/* Middle: Grid Area */
+.folder-grid-area {
+    padding: 1.5rem;
+    background-color: #fafafa;
+}
+
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 1rem;
+}
+
+.file-card {
+    background: white;
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+}
+
+.file-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--primary);
+}
+
+.file-card-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+.file-card-name { font-size: 0.85rem; font-weight: 500; word-break: break-all;}
+
+/* Bottom: List Area */
+.file-list-area {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    padding: 0 1.5rem 1.5rem 1.5rem;
+    background-color: #fafafa;
+    overflow: auto;
+}
+
+.list-header {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    padding: 0.5rem 1rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--text-sub);
+    border-bottom: 2px solid var(--border);
+}
+
+.scroll-viewport {
+    flex: 1;
+    overflow-y: auto;
+}
+
+#file-list { list-style: none; }
+
+.list-row {
+    display: grid;
+    grid-template-columns: 2fr 1fr 1fr;
+    padding: 0.75rem 1rem;
+    font-size: 0.9rem;
+    border-bottom: 1px solid var(--border);
+    align-items: center;
+    transition: background 0.1s;
+}
+
+/* --- HEADER BADGE --- */
+.section-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 1rem;
+}
+
+.badge {
+    background-color: var(--primary-light);
+    color: var(--primary);
+    font-size: 0.7rem;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-weight: 600;
+}
+
+/* --- GRID (Most Used) --- */
+/* Kept the "Perfect" grid settings you liked */
+.grid-container {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); /* slightly wider */
+    gap: 1.2rem;
+}
+
+/* --- LIST (Folders Only) --- */
+/* Updated to look more like directories */
+.folder-name-cell {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    font-weight: 600; /* Bolder text for folder names */
+    color: var(--text-main);
+}
+
+.folder-name-cell .text {
+    padding-bottom: 2px; /* Visual alignment fix */
+}
+
+/* Hover effect for Folders to indicate they are clickable/navigable */
+.list-row {
+    cursor: pointer;
+}
+
+.list-row:hover .folder-name-cell {
+    color: var(--primary); /* Text turns blue on hover */
+}
+
+/* .list-row:hover { background-color: var(--primary-light); }
+.list-row span:first-child { font-weight: 500; display: flex; align-items: center; gap: 10px;} */

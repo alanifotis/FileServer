@@ -57,6 +57,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         private final UserCredentialRepository credentialRepository;
         private final PublicKeyCredentialRequestOptionsRepository requestOptionsRepository;
         private final AuthenticationProvider authenticationManager;
+        private final FileStorageService fileStorageService;
         private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
 
         private static final String LABEL = "Registration Key";
@@ -122,6 +123,13 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         RegistrationRequest dto,
                         HttpServletRequest request,
                         HttpServletResponse response) {
+                
+                var userCheck = this.userRepository.findByEmail(dto.email());
+
+                if (userCheck != null) {
+                        throw new RuntimeException("User already exist.");
+                }
+                                
                 PublicKeyCredentialCreationOptions options = this.creationOptionsRepository.load(request);
 
                 if (options == null) {
@@ -134,6 +142,8 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 User newUser = dto.toUser(userId, dto.email());
 
                 userRepository.insertUser(newUser);
+
+                fileStorageService.initUserRoot(userId);
 
                 var registrationRequest = new ImmutableRelyingPartyRegistrationRequest(options,
                                 new RelyingPartyPublicKey(dto.toPublicKeyCredential(), LABEL));

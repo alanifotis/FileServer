@@ -179,7 +179,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             console.log(whoI);
 
-            setTimeout(() => window.location.href = '/api/me', 2000);
+            setTimeout(() => window.location.href = '/dashboard', 2500);
 
         } catch (error) {
             console.error(error);

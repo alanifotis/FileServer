@@ -1,0 +1,101 @@
+document.addEventListener('DOMContentLoaded', () => {
+    // 1. Your Backend Data
+    const userData = {
+        "authenticated": true,
+        "principal": {
+            "id": 5338712190332928,
+            "email": "test@example.com",
+            "displayName": "Test User",
+            "avatarUrl": null,
+            "planTier": "FREE",
+            "storageUsedBytes": 102450000, // ~97 MB
+            "rootFolderId": 5338712190332928
+        }
+    };
+
+    populateDashboard(userData.principal);
+});
+
+function populateDashboard(user) {
+    // --- 1. Text Fields ---
+    document.querySelector('.user-name').textContent = user.displayName;
+    document.querySelector('.user-email').textContent = user.email;
+    document.querySelector('.plan-badge').textContent = user.planTier + " PLAN";
+
+    // Form Inputs
+    document.getElementById('display-name').value = user.displayName;
+    document.getElementById('email').value = user.email;
+
+    // --- 2. Avatar Logic (Initials + Color) ---
+    const avatarEl = document.querySelector('.avatar-placeholder');
+    if (user.avatarUrl) {
+        avatarEl.innerHTML = `<img src="${user.avatarUrl}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
+    } else {
+        const initials = getInitials(user.displayName || user.email);
+        avatarEl.textContent = initials;
+        // Generate a consistent pastel color based on the name
+        avatarEl.style.backgroundColor = stringToColor(user.email);
+        avatarEl.style.color = 'white';
+    }
+
+    // --- 3. Storage Bar ---
+    // Assuming 5GB Limit for Free Tier
+
+    const usedBytes = user.storageUsedBytes;
+    document.querySelector('.storage-amount').textContent = formatBytes(usedBytes);
+
+    // --- 4. Root Folder Link ---
+    const rootLink = document.querySelector('.root-link');
+    // Update the HREF to point to your actual file route
+    rootLink.href = `/files/${user.rootFolderId}`;
+}
+
+// --- Helpers ---
+
+function getInitials(name) {
+    return name
+        .match(/(\b\S)?/g)
+        .join("")
+        .match(/(^\S|\S$)?/g)
+        .join("")
+        .toUpperCase();
+}
+
+function formatBytes(bytes, decimals = 2) {
+    if (!+bytes) return '0 Bytes';
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(dm))} ${sizes[i]}`;
+}
+
+function stringToColor(str) {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    }
+    // HSL color for pleasant pastels: Hue = hash, Saturation = 70%, Lightness = 45%
+    return `hsl(${hash % 360}, 70%, 45%)`;
+}
+
+document.querySelector('.avatar-input').addEventListener('change', function (event) {
+    if (event.target.files && event.target.files[0]) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const contentDiv = document.querySelector('.avatar-content');
+            contentDiv.innerHTML = `<img src="${e.target.result}" alt="Avatar">`;
+        }
+        reader.readAsDataURL(event.target.files[0]);
+
+        fetch('/api/files/set-avatar', {
+            method: 'POST',
+            headers: { 'X-XSRF-TOKEN': getCsrfToken() },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) throw new Error(response.status);
+            return response.json();
+        })
+    }
+});

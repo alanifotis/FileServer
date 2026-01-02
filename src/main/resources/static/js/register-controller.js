@@ -160,8 +160,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 setError(ui, credentialRecord.statusText, 'error');
             }
             // Success
-            // setSuccess(ui, "Account created successfully! Redirecting...");
-            // setTimeout(() => window.location.href = '/login', 2000);
+            setError(ui, "Account created successfully! Redirecting to login page...", "success");
+            setTimeout(() => window.location.href = '/login', 2000);
 
         } catch (error) {
             console.error(error);

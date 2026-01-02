@@ -4,13 +4,15 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.stereotype.Controller;
 
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.log4j.Log4j2;
 
-@RestController
+@Controller
 @Log4j2
-public class UserController {
+public class DashboardController {
 
     @GetMapping("/api/me")
     public ResponseEntity<?> getCurrentUser() {
@@ -36,4 +38,15 @@ public class UserController {
     return ResponseEntity.ok(principal);
 
     }
+
+    @GetMapping("/dashboard")
+    public String getDashboardPage(HttpServletRequest request, HttpServletResponse response) {
+        return "forward:/dashboard.html";
+    }
+
+    @GetMapping("/files")
+    public String getFilesPage(HttpServletRequest request, HttpServletResponse response) {
+        return "forward:/files.html";
+    }
+    
 }

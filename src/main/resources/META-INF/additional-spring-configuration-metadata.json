@@ -13,5 +13,10 @@
     "name": "fileserver.PublicKeyCredentialRpEntity.id",
     "type": "java.lang.String",
     "description": "The id of RP Entity. Should be the hostname (example.com, localhost, etc)."
+  },
+  {
+    "name": "app.storage.location",
+    "type": "java.lang.String",
+    "description": "The path for storing user files / data."
   }
 ]}

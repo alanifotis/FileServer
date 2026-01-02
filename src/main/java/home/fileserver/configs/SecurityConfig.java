@@ -8,6 +8,7 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.LoginUrlAuthenticationEntryPoint;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
@@ -27,7 +28,7 @@ class SecurityConfiguration {
 
     private final String[] ALLOWED_PATHS = {
             "/",
-            "/api/me",
+            "/favicon/files.png",
             "/login",
             "/login/options",
             "/login.html",
@@ -69,7 +70,8 @@ class SecurityConfiguration {
                     auth.requestMatchers(ALLOWED_PATHS).permitAll();
                     auth.anyRequest().authenticated();
                 })
-                .securityContext(context -> context.securityContextRepository(new HttpSessionSecurityContextRepository()))
+                .securityContext(
+                        context -> context.securityContextRepository(new HttpSessionSecurityContextRepository()))
                 .formLogin(formLogin -> formLogin.disable())
                 .webAuthn(passkeys -> {
                     passkeys.rpId(rpEntityId);
@@ -77,21 +79,32 @@ class SecurityConfiguration {
                     passkeys.creationOptionsRepository(creationOptionsRepository);
                     passkeys.disableDefaultRegistrationPage(true);
                     HttpMessageConverter<Object> converter = new JacksonJsonHttpMessageConverter(
-                        (JsonMapper) mapper
-                    );
+                            (JsonMapper) mapper);
                     passkeys.messageConverter(converter);
                 })
-                .logout(logout -> logout.logoutSuccessUrl("/"))
+                .formLogin(formLogin -> formLogin
+                        .loginPage("/login")
+                        .defaultSuccessUrl("/dashboard")
+                        .failureUrl("/login?error=true")
+                        .permitAll()
+                        .disable()
+                    )
+                .logout(logout -> logout
+                        .permitAll()
+                        .logoutUrl("/logout")
+                        .logoutSuccessUrl("/login?logout"))
                 .csrf(csrf -> {
                     var repo = new CookieCsrfTokenRepository();
                     repo.setCookieCustomizer(c -> c.httpOnly(false)
                             .secure(true)
-                            .sameSite("Lax")
+                            .sameSite("Strict")
                             .path("/")
                             .build());
                     csrf.csrfTokenRepository(repo);
                     csrf.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler());
                 })
+                .exceptionHandling(e -> e
+                        .authenticationEntryPoint(new LoginUrlAuthenticationEntryPoint("/login")))
                 .build();
     }
 
