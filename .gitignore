@@ -53,3 +53,7 @@ out/
 **/outline*
 gradlew*
 demo/
+
+
+### Data Files ###
+user-data/

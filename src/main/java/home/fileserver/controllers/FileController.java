@@ -12,11 +12,9 @@ import home.fileserver.service.FileStorageService;
 import java.util.List;
 import java.util.Map;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 
 @RestController
 @RequestMapping("/api/files")
-// @CrossOrigin(origins = "https://alanis-laptop.local:8443")
 public class FileController {
 
     private final FileStorageService fileStorageService;
