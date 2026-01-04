@@ -9,7 +9,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.web.webauthn.api.Bytes;
 
-import java.time.LocalDateTime;
+import java.time.Instant;
 import java.util.Collection;
 import java.util.List;
 
@@ -30,43 +30,40 @@ public class User implements UserDetails, Persistable<Long> {
     @Column(nullable = false, unique = true)
     private String email;
 
-    @Builder.Default
-    @Column(name = "roles", nullable = false, length = 50)
-    private String role = "USER";
-
-    // --- UX Fields ---
-    
     @Column(name = "display_name")
     private String displayName;
 
-    @Column(name = "avatar_file_id")
-    private Long avatarId; 
-
+    @Column(name = "roles", nullable = false, length = 50)
     @Builder.Default
+    private String role = "USER";
+  
+    @Column(name = "avatar_file_id")
+    @Builder.Default
+    private Long avatarId = null; 
+
     @Column(length = 10)
+    @Builder.Default
     private String locale = "en-US";
 
     // --- File Server Specifics ---
 
-    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "plan_tier", length = 50, nullable = false)
+    @Builder.Default
     private PlanTier planTier = PlanTier.FREE;
 
-    @Builder.Default
     @Column(name = "storage_used_bytes", nullable = false)
-    private long storageUsedBytes = 0; 
-    
-    @Column(name = "root_folder_id", nullable = false)
-    private Long rootFolderId; 
+    @Builder.Default
+    private long storageUsedBytes = 0;
 
     // --- Security ---
 
     @Column(name = "security_stamp", nullable = false)
-    private Long securityStamp;
+    @Builder.Default
+    private Instant securityStamp = Instant.now();
 
     @Column(name = "registred_at", nullable = false, updatable = false, insertable = false)
-    private LocalDateTime registredAt;
+    private Instant registredAt;
 
     @Transient
     @Builder.Default
@@ -76,18 +73,10 @@ public class User implements UserDetails, Persistable<Long> {
     public boolean isNew() {
         return isNew;
     }
-
+    
     @PrePersist
-    protected void onCreate() {
-        
-        if (this.securityStamp == null) {
-            this.securityStamp = System.currentTimeMillis();
-        }
-        this.isNew = false;
-    }
-
     @PostLoad
-    void onLoad() {
+    void markNotNew() {
         this.isNew = false;
     }
 

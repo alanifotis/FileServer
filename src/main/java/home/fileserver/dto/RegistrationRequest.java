@@ -135,7 +135,6 @@ public record RegistrationRequest(
                 .displayName(this.getDisplayName(email))
                 .planTier(PlanTier.FREE)
                 .locale("en-US")
-                .rootFolderId(id)
                 .build();
     }
 }

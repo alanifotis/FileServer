@@ -10,15 +10,11 @@ CREATE TABLE users (
     avatar_file_id BIGINT, 
     locale VARCHAR(10) DEFAULT 'en-US',
     roles VARCHAR(50) DEFAULT 'USER' NOT NULL,
-    security_stamp BIGINT NOT NULL,
     plan_tier VARCHAR(50) DEFAULT 'FREE' NOT NULL, 
     storage_used_bytes BIGINT DEFAULT 0 NOT NULL,
-    root_folder_id BIGINT NOT NULL,
-    registred_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL
+    security_stamp TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    registred_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
 );
-
--- Index for fast login lookups
-CREATE INDEX idx_users_email ON users(email);
 
 /* * 2. WEB_AUTHN CREDENTIALS TABLE
  * Stores device-specific encryption locks (PRF).
@@ -52,8 +48,8 @@ CREATE TABLE user_credentials (
     attestation_client_data_json BYTEA,
 
     -- Audit
-    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    last_used TIMESTAMP,
+    created TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    last_used TIMESTAMPTZ,
 
     -- Foreign Key
     CONSTRAINT fk_user_credentials_users
@@ -64,3 +60,39 @@ CREATE TABLE user_credentials (
 
 -- Index for fast lookup
 CREATE INDEX idx_user_credentials_user_id ON user_credentials(user_id);
+
+CREATE TABLE file_metadata (
+    id BIGINT NOT NULL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    blob_id BIGINT,
+    original_filename VARCHAR(255) NOT NULL,
+    content_type VARCHAR(100),
+    category VARCHAR(30) NOT NULL DEFAULT 'UNKNOWN',
+    parent_id BIGINT,
+    is_folder BOOLEAN NOT NULL DEFAULT FALSE,
+    is_trashed BOOLEAN NOT NULL DEFAULT FALSE,
+    is_public BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at TIMESTAMPTZ,
+    uploaded_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_file_user FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_file_parent FOREIGN KEY (parent_id) REFERENCES file_metadata(id),
+    CONSTRAINT fk_meta_blob FOREIGN KEY (blob_id) REFERENCES file_blobs(id),
+    INDEX idx_folder_content (parent_id, is_trashed),
+    INDEX idx_user_category (user_id, category, is_trashed)
+);
+
+CREATE TABLE file_blobs (
+    -- Standard Auto-Increment ID (Internal use only)
+    id BIGINT NOT NULL PRIMARY KEY AUTO_INCREMENT,
+
+    sha256_hash CHAR(100) NOT NULL UNIQUE,
+
+    storage_path VARCHAR(500) NOT NULL,
+
+    size_in_bytes BIGINT NOT NULL,
+    content_type VARCHAR(100),
+
+    ref_count BIGINT NOT NULL DEFAULT 1,
+
+    created_at TIMESTAMPTZ DEFAULT CURRENT_TIMESTAMP NOT NULL
+);
