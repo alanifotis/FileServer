@@ -136,7 +136,6 @@ public record RegistrationRequest(
                 .planTier(PlanTier.FREE)
                 .locale("en-US")
                 .rootFolderId(id)
-                .securityStamp(System.currentTimeMillis())
                 .build();
     }
 }

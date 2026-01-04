@@ -1,20 +1,24 @@
-document.addEventListener('DOMContentLoaded', () => {
-    // 1. Your Backend Data
-    const userData = {
-        "authenticated": true,
-        "principal": {
-            "id": 5338712190332928,
-            "email": "test@example.com",
-            "displayName": "Test User",
-            "avatarUrl": null,
-            "planTier": "FREE",
-            "storageUsedBytes": 102450000, // ~97 MB
-            "rootFolderId": 5338712190332928
-        }
-    };
+const regex = /(?:(?:^|.*;\s*)XSRF-TOKEN\s*\=\s*([^;]*).*$)|^.*$/;
+function getCsrfToken() { return document.cookie.replace(regex, '$1'); }
 
-    populateDashboard(userData.principal);
-});
+document.addEventListener('DOMContentLoaded', () => {
+
+    // 1. Your Backend Data
+    const userData = fetch('/api/me', {
+        method: 'GET',
+        headers: { 'Accept': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
+    })
+        .then(response => {
+            if (!response.ok) throw new Error(response.status);
+            return response.json();
+        })
+        .then((data) => { return data })
+        .catch((error) => { console.error('Error:', error) });
+
+    populateDashboard(userData);
+}
+
+);
 
 function populateDashboard(user) {
     // --- 1. Text Fields ---
@@ -23,12 +27,19 @@ function populateDashboard(user) {
     document.querySelector('.plan-badge').textContent = user.planTier + " PLAN";
 
     // Form Inputs
-    document.getElementById('display-name').value = user.displayName;
-    document.getElementById('email').value = user.email;
+    document.getElementById('display-name').placeholder = user.displayName;
+    document.getElementById('email').placeholder = user.email;
 
     // --- 2. Avatar Logic (Initials + Color) ---
-    const avatarEl = document.querySelector('.avatar-placeholder');
+    const avatarEl = document.querySelector('.avatar-content');
     if (user.avatarUrl) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+            const contentDiv = document.querySelector('.avatar-content');
+            contentDiv.innerHTML = `<img src="${e.target.result}" alt="Avatar">`;
+        }
+
+        reader.readAsDataURL(user.avatarUrl);
         avatarEl.innerHTML = `<img src="${user.avatarUrl}" style="width:100%; height:100%; border-radius:50%; object-fit:cover;">`;
     } else {
         const initials = getInitials(user.displayName || user.email);
@@ -52,11 +63,14 @@ function populateDashboard(user) {
 
 // --- Helpers ---
 
+const reg1 = /(\b\S)?/g;
+const reg2 = /(^\S|\S$)?/g;
+
 function getInitials(name) {
     return name
-        .match(/(\b\S)?/g)
+        .match(reg1)
         .join("")
-        .match(/(^\S|\S$)?/g)
+        .match(reg2)
         .join("")
         .toUpperCase();
 }
@@ -81,21 +95,30 @@ function stringToColor(str) {
 
 document.querySelector('.avatar-input').addEventListener('change', function (event) {
     if (event.target.files && event.target.files[0]) {
+        const file = event.target.files[0];
+
         const reader = new FileReader();
         reader.onload = function (e) {
             const contentDiv = document.querySelector('.avatar-content');
             contentDiv.innerHTML = `<img src="${e.target.result}" alt="Avatar">`;
         }
-        reader.readAsDataURL(event.target.files[0]);
+
+        reader.readAsDataURL(file);
+
+        const formData = new FormData();
+        formData.append("avatar", file)
+
 
         fetch('/api/files/set-avatar', {
             method: 'POST',
             headers: { 'X-XSRF-TOKEN': getCsrfToken() },
             body: formData
         })
-        .then(response => {
-            if (!response.ok) throw new Error(response.status);
-            return response.json();
-        })
+            .then(response => {
+                if (!response.ok) throw new Error(response.status);
+                return response.json();
+            })
+            .then((data) => { console.log('Success:', data) })
+            .catch((error) => { console.error('Error:', error) });
     }
 });

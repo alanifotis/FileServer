@@ -7,20 +7,27 @@ import org.springframework.web.multipart.MultipartFile;
 
 import home.fileserver.dto.FileItem;
 import home.fileserver.models.User;
+import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.service.FileStorageService;
 
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
-import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+
 
 @RestController
 @RequestMapping("/api/files")
 public class FileController {
 
     private final FileStorageService fileStorageService;
+    private final AppUserRepository userRepository;
 
-    public FileController(FileStorageService fileStorageService) {
+    public FileController(FileStorageService fileStorageService, AppUserRepository userRepository) {
         this.fileStorageService = fileStorageService;
+        this.userRepository = userRepository;
     }
 
     @PostMapping("/upload")
@@ -33,10 +40,16 @@ public class FileController {
             // Assuming you have a UserDetails object setup
             @AuthenticationPrincipal User user) {
         try {
+
+            Path userFolder = fileStorageService.getUserRootPath(user.getId());
+            if (!Files.exists(userFolder)) {
+                fileStorageService.initUserRoot(user.getId());
+            }
+
             boolean isChunked = totalChunks > 1;
 
             String savedName = fileStorageService.storeFile(
-                    user.getId(),
+                    userFolder,
                     file,
                     isChunked,
                     chunkIndex);
@@ -53,22 +66,24 @@ public class FileController {
 
     @PostMapping("/set-avatar")
     public ResponseEntity<?> postMethodName(
-            @RequestParam("file") MultipartFile file,
-            // Parameters for Resumability (Optional)
+            @RequestParam("avatar") MultipartFile file,
             @RequestParam(value = "chunkIndex", defaultValue = "0") int chunkIndex,
             @RequestParam(value = "totalChunks", defaultValue = "1") int totalChunks,
-            // We get the User ID from the Security Context (Authentication)
-            // Assuming you have a UserDetails object setup
             @AuthenticationPrincipal User user) {
 
-         try {
-            boolean isChunked = totalChunks > 1;
+        try {
 
-            String savedName = fileStorageService.storeFile(
-                    user.getId(),
-                    file,
-                    isChunked,
-                    chunkIndex);
+            Path avatarPath = fileStorageService.getUserAvatarPath(user.getId());
+
+            if (!doesPathExist(avatarPath)) {
+                Files.createDirectories(avatarPath);
+            }
+
+            user.setAvatarId(0L);
+
+            this.userRepository.save(user);
+
+            String savedName = fileStorageService.storeAvatar(avatarPath, file);
 
             return ResponseEntity.ok(Map.of(
                     "message", "Upload successful",
@@ -84,5 +99,9 @@ public class FileController {
     public ResponseEntity<List<FileItem>> getUserFiles(@AuthenticationPrincipal User user) {
         List<FileItem> files = fileStorageService.listUserFiles(user.getId());
         return ResponseEntity.ok(files);
+    }    
+
+    private boolean doesPathExist(Path path) {
+        return Files.exists(path);
     }
 }

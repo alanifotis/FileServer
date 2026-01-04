@@ -67,7 +67,9 @@ public class RegisterController {
 
         CredentialRecord cr = this.optionsService.getCredentialRecord(dto, request, response);
 
-        log.warn(cr);
+        if (cr == null) {
+            return ResponseEntity.status(HttpStatus.BAD_REQUEST).build();
+        }
 
         return ResponseEntity.status(HttpStatus.CREATED).body(cr);
     }

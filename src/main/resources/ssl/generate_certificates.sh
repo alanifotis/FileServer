@@ -44,6 +44,7 @@ DNS_LIST=(
   "witt-solutions.local"
   "alanis-laptop.local"
   "home.local"
+  "pixel.local"
 )
 
 # Network Configuration (Add your IPs here)

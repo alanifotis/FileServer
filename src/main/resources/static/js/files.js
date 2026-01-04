@@ -1,9 +1,9 @@
 document.addEventListener("DOMContentLoaded", () => {
-    
+
     // --- 1. CONFIG & UTILS ---
     const fileGrid = document.getElementById('file-grid');
     const folderList = document.getElementById('folder-list');
-    
+
     // Regex to get CSRF token (Important for non-GET requests, kept for consistency)
     const regex = /(?:(?:^|.*;\s*)XSRF-TOKEN\s*\=\s*([^;]*).*$)|^.*$/;
     function getCsrfToken() { return document.cookie.replace(regex, '$1'); }
@@ -29,15 +29,16 @@ document.addEventListener("DOMContentLoaded", () => {
             method: 'GET',
             headers: {
                 // GET requests usually don't need CSRF, but good habit
-                'Accept': 'application/json'
+                'Accept': 'application/json',
+                'X-XSRF-TOKEN': getCsrfToken()
             }
         })
-        .then(response => {
-            if(!response.ok) throw new Error("Failed to load files");
-            return response.json();
-        })
-        .then(data => renderData(data))
-        .catch(err => console.error("Error loading files:", err));
+            .then(response => {
+                if (!response.ok) throw new Error("Failed to load files");
+                return response.json();
+            })
+            .then(data => renderData(data))
+            .catch(err => console.error("Error loading files:", err));
     }
 
     function renderData(files) {
@@ -123,27 +124,27 @@ document.addEventListener("DOMContentLoaded", () => {
             headers: { 'X-XSRF-TOKEN': getCsrfToken() },
             body: formData
         })
-        .then(response => {
-            if (!response.ok) throw new Error(response.status);
-            return response.json();
-        })
-        .then(data => {
-            progressBar.style.width = '100%';
-            
-            setTimeout(() => {
-                alert('Upload Complete!');
-                progressBar.style.width = '0%';
-                progressContainer.style.display = 'none';
-                
-                // REFRESH DATA to show the new file
-                loadFiles(); 
-            }, 500);
-        })
-        .catch(err => {
-            console.error(err);
-            progressBar.style.backgroundColor = 'red';
-            alert("Upload Failed");
-        });
+            .then(response => {
+                if (!response.ok) throw new Error(response.status);
+                return response.json();
+            })
+            .then(data => {
+                progressBar.style.width = '100%';
+
+                setTimeout(() => {
+                    alert('Upload Complete!');
+                    progressBar.style.width = '0%';
+                    progressContainer.style.display = 'none';
+
+                    // REFRESH DATA to show the new file
+                    loadFiles();
+                }, 500);
+            })
+            .catch(err => {
+                console.error(err);
+                progressBar.style.backgroundColor = 'red';
+                alert("Upload Failed");
+            });
     }
 
     // INITIAL LOAD

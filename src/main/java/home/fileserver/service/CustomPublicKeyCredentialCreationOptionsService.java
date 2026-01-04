@@ -5,11 +5,13 @@ import home.fileserver.dto.PasskeyRegistrationRequestDto;
 import home.fileserver.dto.RegistrationRequest;
 import home.fileserver.dto.RegistrationRequest.PrfContext;
 import home.fileserver.models.CredPropsAuthenticationExtensionsClientInput;
+import home.fileserver.models.FileMetadata;
 import home.fileserver.models.PrfAuthenticationExtensionsClientInput;
 import home.fileserver.models.PrfAuthenticationExtensionsClientInput.Eval;
 import home.fileserver.models.User;
 import home.fileserver.models.UserCredential;
 import home.fileserver.repositories.AppUserRepository;
+import home.fileserver.repositories.FileMetadataRepository;
 import home.fileserver.repositories.UserCredentialRepository;
 import home.fileserver.utilities.Longs;
 import home.fileserver.utilities.Snowflake;
@@ -59,7 +61,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         private final AuthenticationProvider authenticationManager;
         private final FileStorageService fileStorageService;
         private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
-
+        private final FileMetadataRepository fileRepository;
         private static final String LABEL = "Registration Key";
 
         Duration TIMEOUT = Duration.ofMillis(300000L);
@@ -123,17 +125,17 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         RegistrationRequest dto,
                         HttpServletRequest request,
                         HttpServletResponse response) {
-                
+
                 var userCheck = this.userRepository.findByEmail(dto.email());
 
                 if (userCheck != null) {
-                        throw new RuntimeException("User already exist.");
+                        return null;
                 }
-                                
+
                 PublicKeyCredentialCreationOptions options = this.creationOptionsRepository.load(request);
 
                 if (options == null) {
-                        throw new IllegalStateException("Registration flow not started or expired.");
+                        return null;
                 }
 
                 Bytes userIdBytes = options.getUser().getId();
@@ -141,9 +143,23 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 User newUser = dto.toUser(userId, dto.email());
 
-                userRepository.insertUser(newUser);
+                userRepository.save(newUser);
 
                 fileStorageService.initUserRoot(userId);
+
+                FileMetadata rootFolder = FileMetadata.builder()
+                                .id(userId)
+                                .user(newUser)
+                                .originalFilename("Home")
+                                .storedName(null)
+                                .contentType("application/vnd.folder")
+                                .sizeInBytes(0)
+                                .isFolder(true)
+                                .parentId(null)
+                                .extension(null)
+                                .build();
+
+                this.fileRepository.save(rootFolder);
 
                 var registrationRequest = new ImmutableRelyingPartyRegistrationRequest(options,
                                 new RelyingPartyPublicKey(dto.toPublicKeyCredential(), LABEL));
@@ -257,10 +273,9 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 User user = this.userRepository.findByEmail(authResult.getName());
 
                 Authentication fullAuth = new UsernamePasswordAuthenticationToken(
-                                user, 
+                                user,
                                 authResult.getCredentials(),
-                                authResult.getAuthorities()
-                );
+                                authResult.getAuthorities());
 
                 SecurityContext context = SecurityContextHolder.createEmptyContext();
                 context.setAuthentication(fullAuth);

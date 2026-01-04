@@ -1,0 +1,20 @@
+CREATE TABLE file_metadata (
+    id BIGINT NOT NULL PRIMARY KEY,
+    user_id BIGINT NOT NULL,
+    original_filename VARCHAR(255) NOT NULL,
+    stored_filename VARCHAR(255),
+    extension VARCHAR(50),
+    content_type VARCHAR(100),
+    size_in_bytes BIGINT DEFAULT 0,
+    parent_id BIGINT,
+    is_folder BOOLEAN NOT NULL DEFAULT FALSE,
+    file_hash VARCHAR(100),
+    is_trashed BOOLEAN NOT NULL DEFAULT FALSE,
+    is_public BOOLEAN NOT NULL DEFAULT FALSE,
+    updated_at DATETIME,
+    uploaded_at DATETIME DEFAULT CURRENT_TIMESTAMP NOT NULL,
+    CONSTRAINT fk_file_owner FOREIGN KEY (user_id) REFERENCES users(id),
+    CONSTRAINT fk_file_parent FOREIGN KEY (parent_id) REFERENCES file_metadata(id),
+    INDEX idx_folder_content (parent_id, is_trashed),
+    INDEX idx_owner_stats (user_id, is_trashed, size_in_bytes)
+);
