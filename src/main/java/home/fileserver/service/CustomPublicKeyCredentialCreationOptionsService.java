@@ -5,14 +5,12 @@ import home.fileserver.dto.PasskeyRegistrationRequestDto;
 import home.fileserver.dto.RegistrationRequest;
 import home.fileserver.dto.RegistrationRequest.PrfContext;
 import home.fileserver.models.CredPropsAuthenticationExtensionsClientInput;
-import home.fileserver.models.FileMetadata;
 import home.fileserver.models.PrfAuthenticationExtensionsClientInput;
 import home.fileserver.models.PrfAuthenticationExtensionsClientInput.Eval;
 import home.fileserver.models.User;
-import home.fileserver.models.UserCredential;
+import home.fileserver.models.CustomUserCredential;
 import home.fileserver.repositories.AppUserRepository;
-import home.fileserver.repositories.FileMetadataRepository;
-import home.fileserver.repositories.UserCredentialRepository;
+import home.fileserver.repositories.CustomUserCredentialRepository;
 import home.fileserver.utilities.Longs;
 import home.fileserver.utilities.Snowflake;
 import jakarta.servlet.http.HttpServletRequest;
@@ -56,15 +54,14 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         private final Snowflake snowflake;
         private final AppUserRepository userRepository;
         private final PublicKeyCredentialRpEntity rpEntity;
-        private final UserCredentialRepository credentialRepository;
+        private final CustomUserCredentialRepository credentialRepository;
         private final PublicKeyCredentialRequestOptionsRepository requestOptionsRepository;
         private final AuthenticationProvider authenticationManager;
         private final FileStorageService fileStorageService;
         private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
-        private final FileMetadataRepository fileRepository;
         private static final String LABEL = "Registration Key";
 
-        Duration TIMEOUT = Duration.ofMillis(300000L);
+        private static final Duration TIMEOUT = Duration.ofMillis(300000L);
 
         public PublicKeyCredentialCreationOptions getPublicKeyCredentialCreationOptions(
                         PasskeyRegistrationRequestDto dto,
@@ -79,12 +76,6 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                                 .name(dto.email())
                                 .build();
 
-                // Ed25519 (Preferred modern)
-                // ES256 (Universal fallback)
-                // RS256 (Legacy fallback)
-                // ES256 -7 SHA-256 ECDSA w/ SHA-256
-                // ES384 -35 SHA-384 ECDSA w/ SHA-384
-                // ES512 -36 SHA-512 ECDSA w/ SHA-512
                 List<PublicKeyCredentialParameters> publicKeyCredentialParameters = new ArrayList<>(
                                 List.of(
                                                 PublicKeyCredentialParameters.EdDSA,
@@ -147,20 +138,6 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 fileStorageService.initUserRoot(userId);
 
-                FileMetadata rootFolder = FileMetadata.builder()
-                                .id(userId)
-                                .user(newUser)
-                                .originalFilename("Home")
-                                .storedName(null)
-                                .contentType("application/vnd.folder")
-                                .sizeInBytes(0)
-                                .isFolder(true)
-                                .parentId(null)
-                                .extension(null)
-                                .build();
-
-                this.fileRepository.save(rootFolder);
-
                 var registrationRequest = new ImmutableRelyingPartyRegistrationRequest(options,
                                 new RelyingPartyPublicKey(dto.toPublicKeyCredential(), LABEL));
 
@@ -186,7 +163,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         throw new IllegalStateException("User not found.");
                 }
 
-                List<UserCredential> credentials = credentialRepository.findByUserId(user.getId());
+                List<CustomUserCredential> credentials = credentialRepository.findByUserId(user.getId());
 
                 if (credentials.isEmpty()) {
                         throw new IllegalStateException("No passkeys found for this user.");
@@ -198,7 +175,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 List<PublicKeyCredentialDescriptor> allowCredentials = new ArrayList<>();
 
-                for (UserCredential cred : credentials) {
+                for (CustomUserCredential cred : credentials) {
 
                         Set<AuthenticatorTransport> transports = new HashSet<>();
                         if (StringUtils.hasText(cred.getAuthenticatorTransports())) {

@@ -1,6 +1,5 @@
 package home.fileserver.service;
 
-import org.apache.tika.Tika;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
@@ -8,10 +7,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import home.fileserver.dto.FileItem;
-import home.fileserver.models.FileMetadata;
-import home.fileserver.models.User;
-import home.fileserver.utilities.Snowflake;
-import home.fileserver.utilities.SnowflakeGenerator;
 import lombok.extern.log4j.Log4j2;
 
 import java.io.IOException;
@@ -37,7 +32,6 @@ public class FileStorageService {
     private final Path rootLocation;
     // Locks to prevent two uploads writing to the same file at the exact same ms
     private final ConcurrentHashMap<String, Object> fileLocks = new ConcurrentHashMap<>();
-    private final Tika tika = new Tika();
 
     // We inject a path from application.properties, defaulting to "user-data"
     public FileStorageService(@Value("${app.storage.location:user-data}") String location) {
@@ -75,32 +69,10 @@ public class FileStorageService {
      * @param forcedName If not null, the file will be renamed to this (plus
      *                   original extension).
      */
-    private String storeFile(User user, Path storePath, MultipartFile file, boolean isChunk, int chunkIndex, String forcedName) {
+    private String storeFile(Path storePath, MultipartFile file, boolean isChunk, int chunkIndex, String forcedName) {
 
         Path originalFilename = Paths.get(file.getOriginalFilename()).getFileName();
         String finalFilename;
-
-        String detectedMimeType = null;
-
-        try {
-            detectedMimeType = tika.detect(file.getInputStream());
-        } catch (IOException e) {
-            log.error("Failed to detect MIME TYPE.", e);
-        }
-
-        FileMetadata metadata = FileMetadata.builder()
-            .id(Snowflake.getInstance().nextId())
-            .user(user)
-            .originalFilename(file.getOriginalFilename())
-            .storedName(file.getOriginalFilename())
-            .extension(getFileExtension(originalFilename))
-            .contentType(detectedMimeType)
-            .
-            .build()
-        ;
-
-
-
 
         // --- LOGIC CHANGE STARTS HERE ---
 

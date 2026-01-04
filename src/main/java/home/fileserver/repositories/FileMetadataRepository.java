@@ -3,10 +3,12 @@ package home.fileserver.repositories;
 import java.util.List;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import home.fileserver.models.FileCategory;
 import home.fileserver.models.FileMetadata;
 
+@Repository
 public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long> {
     List<FileMetadata> findByParentIdAndIsTrashedFalse(Long parentId);
 

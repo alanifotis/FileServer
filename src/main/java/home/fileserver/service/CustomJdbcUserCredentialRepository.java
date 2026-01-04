@@ -2,7 +2,7 @@ package home.fileserver.service;
 
 import home.fileserver.dto.RegistrationRequest.PrfContext;
 import home.fileserver.models.User;
-import home.fileserver.models.UserCredential;
+import home.fileserver.models.CustomUserCredential;
 import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.utilities.Longs;
 import jakarta.transaction.Transactional;
@@ -16,7 +16,8 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
-import java.time.ZoneOffset;
+
+import java.time.Instant;
 
 /**
  * Adapts the standard Spring Security WebAuthn management to your JPA Entities.
@@ -27,10 +28,10 @@ import java.time.ZoneOffset;
 public class CustomJdbcUserCredentialRepository implements UserCredentialRepository {
     public static final ScopedValue<PrfContext> PRF_SCOPE = ScopedValue.newInstance();
 
-    private final home.fileserver.repositories.UserCredentialRepository jpaCredentialRepo;
+    private final home.fileserver.repositories.CustomUserCredentialRepository jpaCredentialRepo;
     private final AppUserRepository userRepo;
 
-    public CustomJdbcUserCredentialRepository(home.fileserver.repositories.UserCredentialRepository jpaCredentialRepo,
+    public CustomJdbcUserCredentialRepository(home.fileserver.repositories.CustomUserCredentialRepository jpaCredentialRepo,
             AppUserRepository userRepo) {
         this.jpaCredentialRepo = jpaCredentialRepo;
         this.userRepo = userRepo;
@@ -50,8 +51,8 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
                 .ifPresentOrElse(entity -> {
                     entity.setSignatureCount(record.getSignatureCount());
                     entity.setLastUsed(record.getLastUsed() != null
-                            ? java.time.LocalDateTime.ofInstant(record.getLastUsed(), ZoneOffset.UTC)
-                            : null);
+                            ? record.getLastUsed()
+                            : Instant.now());
                     entity.setUvInitialized(record.isUvInitialized());
                     entity.setBackupState(record.isBackupState());
                     // We do NOT overwrite PRF fields here because 'record' doesn't have them.
@@ -119,7 +120,7 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
         }
 
         // 3. Create or Update Entity
-        UserCredential entity = UserCredential.builder()
+        CustomUserCredential entity = CustomUserCredential.builder()
                 .credentialId(record.getCredentialId().toBase64UrlString())
                 .user(user)
                 .label(record.getLabel())
@@ -143,10 +144,10 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
                                 : null)
 
                 // Dates
-                .created(java.time.LocalDateTime.ofInstant(record.getCreated(), ZoneOffset.UTC))
+                .created(record.getCreated())
                 .lastUsed(record.getLastUsed() != null
-                        ? java.time.LocalDateTime.ofInstant(record.getLastUsed(), ZoneOffset.UTC)
-                        : null)
+                        ? record.getLastUsed()
+                        : Instant.now())
                 .build();
 
         jpaCredentialRepo.save(entity);
@@ -156,7 +157,7 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
     // 3. MAPPER (Entity -> Spring Security Record)
     // =================================================================================
 
-    private CredentialRecord mapEntityToRecord(UserCredential entity) {
+    private CredentialRecord mapEntityToRecord(CustomUserCredential entity) {
         // Convert Long ID -> Bytes
         Bytes userIdBytes = new Bytes(Longs.toByteArray(entity.getUser().getId()));
 
@@ -189,8 +190,8 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
                         entity.getAttestationClientDataJson() != null ? new Bytes(entity.getAttestationClientDataJson())
                                 : null)
                 // Dates
-                .created(entity.getCreated().toInstant(ZoneOffset.UTC))
-                .lastUsed(entity.getLastUsed() != null ? entity.getLastUsed().toInstant(ZoneOffset.UTC) : null)
+                .created(entity.getCreated())
+                .lastUsed(entity.getLastUsed() != null ? entity.getLastUsed() : Instant.now())
                 // Note: PRF fields are NOT part of the standard CredentialRecord interface,
                 // so we don't map them here. They are used separately during encryption.
                 .build();
