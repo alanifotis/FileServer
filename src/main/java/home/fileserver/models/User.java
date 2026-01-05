@@ -96,6 +96,6 @@ public class User implements UserDetails, Persistable<Long> {
     @Override public boolean isEnabled() { return true; }
 
     public Bytes getByteId() {
-        return this.id == null ? null : new Bytes(Longs.toByteArray(this.id));
+        return this.id == null ? null : Longs.toBytes(this.id);
     }
 }

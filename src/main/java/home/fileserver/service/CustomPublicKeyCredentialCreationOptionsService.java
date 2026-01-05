@@ -9,6 +9,7 @@ import home.fileserver.models.PrfAuthenticationExtensionsClientInput;
 import home.fileserver.models.PrfAuthenticationExtensionsClientInput.Eval;
 import home.fileserver.models.User;
 import home.fileserver.models.CustomUserCredential;
+import home.fileserver.models.FileCategory;
 import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.repositories.CustomUserCredentialRepository;
 import home.fileserver.utilities.Longs;
@@ -60,6 +61,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         private final FileStorageService fileStorageService;
         private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
         private static final String LABEL = "Registration Key";
+        private final FileMetadataService metadataService;
 
         private static final Duration TIMEOUT = Duration.ofMillis(300000L);
 
@@ -67,11 +69,11 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         PasskeyRegistrationRequestDto dto,
                         HttpServletRequest request,
                         HttpServletResponse response) {
-                byte[] userId = Longs.toByteArray(snowflake.nextId());
+                Bytes userId = Longs.toBytes(snowflake.nextId());
                 Bytes challenge = Bytes.random();
 
                 PublicKeyCredentialUserEntity user = ImmutablePublicKeyCredentialUserEntity.builder()
-                                .id(new Bytes(userId))
+                                .id(userId)
                                 .displayName(dto.email().substring(0, dto.email().indexOf('@')))
                                 .name(dto.email())
                                 .build();
@@ -94,7 +96,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 AttestationConveyancePreference attestation = AttestationConveyancePreference.NONE;
 
-                var extensions = this.getAuthenticationExtensionsClientInputs();
+                AuthenticationExtensionsClientInputs extensions = this.getAuthenticationExtensionsClientInputs();
 
                 PublicKeyCredentialCreationOptions options = PublicKeyCredentialCreationOptions.builder()
                                 .challenge(challenge)
@@ -129,14 +131,8 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         return null;
                 }
 
-                Bytes userIdBytes = options.getUser().getId();
-                long userId = Longs.fromByteArray(userIdBytes.getBytes());
-
-                User newUser = dto.toUser(userId, dto.email());
-
-                userRepository.save(newUser);
-
-                fileStorageService.initUserRoot(userId);
+                this.saveUserCreateRootDirectorySaveRootMetadata(
+                                dto.toUser(Longs.fromBytes(options.getUser().getId()), dto.email()));
 
                 var registrationRequest = new ImmutableRelyingPartyRegistrationRequest(options,
                                 new RelyingPartyPublicKey(dto.toPublicKeyCredential(), LABEL));
@@ -184,7 +180,8 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                                         try {
                                                 transports.add(AuthenticatorTransport.valueOf(t));
                                         } catch (IllegalArgumentException ignored) {
-                                                // Ignore unknown transports for forward compatibility
+                                                // Ignore unknown transports see:
+                                                // https://www.w3.org/TR/webauthn-3/#enum-transport
                                         }
                                 }
                         }
@@ -192,22 +189,17 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         prfContextMap.put(cred.getCredentialId(),
                                         new PrfContext(cred.getPrfSalt(), cred.getPrfWrappedKey(), cred.getPrfIv()));
 
-                        // A. Add to Allow List
-                        allowCredentials.add(
-                                        PublicKeyCredentialDescriptor.builder()
-                                                        .id(Bytes.fromBase64(cred.getCredentialId()))
-                                                        .type(PublicKeyCredentialType.PUBLIC_KEY)
-                                                        .transports(transports)
-                                                        .build());
+                        allowCredentials.add(PublicKeyCredentialDescriptor.builder()
+                                        .id(Bytes.fromBase64(cred.getCredentialId()))
+                                        .type(PublicKeyCredentialType.PUBLIC_KEY)
+                                        .transports(transports)
+                                        .build());
 
-                        // B. Add to PRF Map
-                        // We map THIS specific Credential ID to THIS specific Salt
                         Bytes specificSalt = Bytes.fromBase64(cred.getPrfSalt());
 
                         evalByCredentialMap.put(
-                                        cred.getCredentialId(), // The Key: Base64URL ID
-                                        Map.of("first", specificSalt) // The Value: Input for PRF
-                        );
+                                        cred.getCredentialId(),
+                                        Map.of("first", specificSalt));
                 }
 
                 AuthenticationExtensionsClientInput<Map<String, Object>> inputs = new ImmutableAuthenticationExtensionsClientInput<Map<String, Object>>(
@@ -274,4 +266,13 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                                 List.of(credProps, prfInput));
         }
 
+        private void saveUserCreateRootDirectorySaveRootMetadata(User newUser) {
+                var user = userRepository.save(newUser);
+
+                fileStorageService.initUserRoot(newUser.getId());
+
+                this.metadataService.saveDirectoryMetadata(user, "Home", null, FileCategory.HOME);
+
+                return;
+        }
 }

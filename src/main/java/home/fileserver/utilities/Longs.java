@@ -1,21 +1,25 @@
 package home.fileserver.utilities;
 
+import org.springframework.security.web.webauthn.api.Bytes;
 import org.springframework.stereotype.Component;
 
 @Component
 public final class Longs {
     public static final int BYTES = Long.BYTES;
 
-    public static byte[] toByteArray(long value) {
+    public static Bytes toBytes(long value) {
     byte[] result = new byte[8];
     for (int i = 7; i >= 0; i--) {
       result[i] = (byte) (value & 0xffL);
       value >>= 8;
     }
-    return result;
+    return new Bytes(result);
   }
 
-  public static long fromByteArray(byte[] bytes) {
+  public static long fromBytes(Bytes id) {
+
+    byte[] bytes = id.getBytes();
+
     if (bytes.length < BYTES) {
         throw new IllegalArgumentException(String.format("array too small: %s < %s", bytes.length, BYTES));
     }

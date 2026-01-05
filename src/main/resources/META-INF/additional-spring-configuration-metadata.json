@@ -1,6 +1,6 @@
 {"properties": [
   {
-    "name": "fileserver.PublicKeyCredentialRpEntity.name",
+    "name": "fileserver.publickeycredentialrpentity.name",
     "type": "java.lang.String",
     "description": "The name of RP Entity. Can have any value."
   },
@@ -10,7 +10,7 @@
     "description": "Referes to the server's port for the http protocol."
   },
   {
-    "name": "fileserver.PublicKeyCredentialRpEntity.id",
+    "name": "fileserver.publickeycredentialrpentity.id",
     "type": "java.lang.String",
     "description": "The id of RP Entity. Should be the hostname (example.com, localhost, etc)."
   },
@@ -18,5 +18,10 @@
     "name": "app.storage.location",
     "type": "java.lang.String",
     "description": "The path for storing user files / data."
+  },
+  {
+    "name": "spring.thread-executor",
+    "type": "java.lang.String",
+    "description": "Simple switch between Virtual Threads and Platform threads."
   }
 ]}

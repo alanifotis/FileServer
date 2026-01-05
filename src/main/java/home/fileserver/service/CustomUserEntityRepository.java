@@ -1,4 +1,4 @@
-package home.fileserver.utilities;
+package home.fileserver.service;
 
 import org.jspecify.annotations.NonNull;
 
@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import home.fileserver.models.User;
 import home.fileserver.repositories.AppUserRepository;
+import home.fileserver.utilities.Longs;
 
 import java.nio.ByteBuffer;
 
@@ -40,7 +41,7 @@ public class CustomUserEntityRepository implements PublicKeyCredentialUserEntity
 
         try {
             // 1. Convert WebAuthn Bytes -> Long Snowflake
-            long snowflakeId = ByteBuffer.wrap(id.getBytes()).getLong();
+            long snowflakeId = Longs.fromBytes(id);
 
             // 2. Delegate to your existing Repository
             return userRepository.findById(snowflakeId)

@@ -157,7 +157,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             const credentialRecord = await fetch('/register', request);
 
             if (!credentialRecord.ok) {
-                setError(ui, credentialRecord.statusText, 'error');
+                setError(ui, credentialRecord.statusText || "An unexpected error occurred.", 'error');
+                return;
             }
             // Success
             setError(ui, "Account created successfully! Redirecting to login page...", "success");

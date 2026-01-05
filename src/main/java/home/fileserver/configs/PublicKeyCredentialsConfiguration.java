@@ -17,7 +17,7 @@ import org.springframework.security.web.webauthn.registration.PublicKeyCredentia
 
 import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.service.CustomJdbcUserCredentialRepository;
-import home.fileserver.utilities.CustomUserEntityRepository;
+import home.fileserver.service.CustomUserEntityRepository;
 
 import java.util.Set;
 
@@ -29,12 +29,13 @@ public class PublicKeyCredentialsConfiguration {
             "https://localhost:8443",
             "https://witt-solution.local:8443",
             "https://home.local:8443",
-            "https://alanis-laptop.local:8443"
+            "https://alanis-laptop.local:8443",
+            "https://pixel.local:8443"
     );
 
-    @Value("${fileserver.PublicKeyCredentialRpEntity.name}")
+    @Value("${fileserver.publickeycredentialrpentity.name}")
     private String rpName;
-    @Value("${fileserver.PublicKeyCredentialRpEntity.id}")
+    @Value("${fileserver.publickeycredentialrpentity.id}")
     private String rpEntityId;
 
     @Bean

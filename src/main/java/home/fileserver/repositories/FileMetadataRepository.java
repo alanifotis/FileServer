@@ -1,12 +1,16 @@
 package home.fileserver.repositories;
 
 import java.util.List;
+import java.util.Set;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import home.fileserver.models.FileCategory;
 import home.fileserver.models.FileMetadata;
+import home.fileserver.models.User;
 
 @Repository
 public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long> {
@@ -17,4 +21,14 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long
     List<FileMetadata> findByUser_IdAndOriginalFilenameContainingIgnoreCaseAndIsTrashedFalse(
         Long userId, String query
     );
+   @Query("SELECT DISTINCT m.originalFilename FROM FileMetadata m " +
+           "WHERE m.user = :user " +
+           "AND m.isTrashed = false " +
+           "AND (:parentId IS NULL AND m.parentId IS NULL OR m.parentId = :parentId) " +
+           "AND (m.originalFilename = :exactName OR m.originalFilename LIKE :pattern)") 
+    Set<String> findTakenNames(@Param("user") User user, 
+                               @Param("parentId") Long parentId, 
+                               @Param("exactName") String exactName,
+                               @Param("pattern") String pattern);
+    boolean existsByIdAndUser(Long id, User user);
 }

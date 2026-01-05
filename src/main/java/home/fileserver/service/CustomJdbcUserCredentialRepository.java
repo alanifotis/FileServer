@@ -86,7 +86,7 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
     @Override
     public List<CredentialRecord> findByUserId(Bytes userId) {
         // CRITICAL: Convert WebAuthn Bytes -> Snowflake Long
-        long snowflakeId = Longs.fromByteArray(userId.getBytes());
+        long snowflakeId = Longs.fromBytes(userId);
 
         return jpaCredentialRepo.findByUserId(snowflakeId).stream()
                 .map(this::mapEntityToRecord)
@@ -107,7 +107,7 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
 
     private void doInternalSave(CredentialRecord record, String salt, String wrappedKey, String iv) {
         // 1. Resolve User
-        long userId = Longs.fromByteArray(record.getUserEntityUserId().getBytes());
+        long userId = Longs.fromBytes(record.getUserEntityUserId());
         User user = userRepo.findById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found for ID: " + userId));
 
@@ -159,7 +159,7 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
 
     private CredentialRecord mapEntityToRecord(CustomUserCredential entity) {
         // Convert Long ID -> Bytes
-        Bytes userIdBytes = new Bytes(Longs.toByteArray(entity.getUser().getId()));
+        Bytes userIdBytes = Longs.toBytes(entity.getUser().getId());
 
         // Parse Transports
         Set<AuthenticatorTransport> transports = new HashSet<>();

@@ -54,12 +54,14 @@ public class FileStorageService {
             if (!Files.exists(userPath)) {
                 Files.createDirectories(userPath);
                 var avatarPath = getUserAvatarPath(userId);
-                Files.createDirectories(avatarPath);
-                System.out.println(
-                        "Created root folder for user: " + userId + " at " + userPath + " & " + avatarPath);
+                log.info("Created root folder for user: {} at {} & {}", userId, userPath, avatarPath);
+                return;
             }
+
+            log.info("Default directories are already created.");
+
         } catch (IOException e) {
-            throw new RuntimeException("Could not initialize folder for user " + userId, e);
+            log.error("Could not initialize folder for user " + userId, e);
         }
     }
 

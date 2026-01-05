@@ -54,7 +54,7 @@ class SecurityConfiguration {
             "http://192.168.10.161:8080",
     };
 
-    @Value("${fileserver.PublicKeyCredentialRpEntity.id}")
+    @Value("${fileserver.publickeycredentialrpentity.id}")
     private String rpEntityId;
 
     @Bean

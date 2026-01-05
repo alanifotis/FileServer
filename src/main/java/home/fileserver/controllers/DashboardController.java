@@ -5,6 +5,7 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 
+import home.fileserver.dto.UserDto;
 import home.fileserver.models.User;
 import org.springframework.stereotype.Controller;
 
@@ -16,10 +17,8 @@ import lombok.extern.log4j.Log4j2;
 @Log4j2
 public class DashboardController {
 
-
-
     @GetMapping("/api/me")
-    public ResponseEntity<?> getCurrentUser() {
+    public ResponseEntity<UserDto> getCurrentUser() {
 
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
 
@@ -30,16 +29,7 @@ public class DashboardController {
 
         User principal = (User) auth.getPrincipal();
 
-        // 2. Log the ACTUAL class type
-        log.info("================ SESSION DEBUG ================");
-        log.info("Authentication Type: {}", auth.getClass().getName());
-        log.info("Principal Type:      {}", principal.getClass().getName());
-        log.info("Principal Data:      {}", principal);
-        log.info("===============================================");
-
-        // 3. Return the raw principal so you can see it in the browser console
-        return ResponseEntity.ok(principal);
-
+        return ResponseEntity.ok(UserDto.fromUser(principal));
     }
 
     @GetMapping("/dashboard")
@@ -49,6 +39,7 @@ public class DashboardController {
 
     @GetMapping("/files")
     public String getFilesPage(HttpServletRequest request, HttpServletResponse response) {
+        response.setHeader("C", null);
         return "forward:/files.html";
     }
 
