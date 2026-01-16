@@ -1,6 +1,8 @@
 package home.fileserver.models;
 
 import java.time.Instant;
+
+import org.jspecify.annotations.Nullable;
 import org.springframework.data.domain.Persistable;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -39,7 +41,7 @@ public class FileMetadata implements Persistable<Long>{
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "blob_id")
-    private FileBlob blob;
+    @Nullable private FileBlob blob;
 
     // --- File Info ---
     @Column(name = "original_filename", nullable = false)

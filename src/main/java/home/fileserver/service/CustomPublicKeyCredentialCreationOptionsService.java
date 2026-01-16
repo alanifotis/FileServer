@@ -17,6 +17,7 @@ import home.fileserver.utilities.Snowflake;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -24,6 +25,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContext;
 import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.webauthn.api.*;
@@ -36,6 +38,7 @@ import org.springframework.security.web.webauthn.management.WebAuthnRelyingParty
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.Duration;
 import java.util.ArrayList;
@@ -48,6 +51,7 @@ import java.util.Set;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class CustomPublicKeyCredentialCreationOptionsService {
 
         private final PublicKeyCredentialCreationOptionsRepository creationOptionsRepository;
@@ -63,7 +67,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         private static final String LABEL = "Registration Key";
         private final FileMetadataService metadataService;
 
-        private static final Duration TIMEOUT = Duration.ofMillis(300000L);
+        public static final Duration TIMEOUT = Duration.ofMillis(300000L);
 
         public PublicKeyCredentialCreationOptions getPublicKeyCredentialCreationOptions(
                         PasskeyRegistrationRequestDto dto,
@@ -239,6 +243,8 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 Authentication authResult = this.authenticationManager.authenticate(token);
 
+                request.changeSessionId();
+
                 User user = this.userRepository.findByEmail(authResult.getName());
 
                 Authentication fullAuth = new UsernamePasswordAuthenticationToken(
@@ -274,5 +280,62 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 this.metadataService.saveDirectoryMetadata(user, "Home", null, FileCategory.HOME);
 
                 return;
+        }
+
+        public Authentication autoMagicLogin(HttpServletRequest request, HttpServletResponse response, @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
+                PublicKeyCredentialRequestOptions options = this.requestOptionsRepository.load(request);
+
+                if (options == null) {
+                        throw new BadCredentialsException("Unable to authenticate the PublicKeyCredential. No PublicKeyCredentialRequestOptions found.");
+                }
+
+                String expectedChallenge = options.getChallenge().toBase64UrlString();
+                String clientChallenge = assertion.getResponse().getClientDataJSON().toBase64UrlString();
+
+                log.warn("Expected: {}, Result: {}", expectedChallenge, clientChallenge);
+
+                RelyingPartyAuthenticationRequest authenticationRequest = new RelyingPartyAuthenticationRequest(options,
+                                assertion);
+                WebAuthnAuthenticationRequestToken token = new WebAuthnAuthenticationRequestToken(
+                                authenticationRequest);
+
+                Authentication authResult = this.authenticationManager.authenticate(token);
+
+                this.requestOptionsRepository.save(request, response, null);
+
+                request.changeSessionId();
+
+                User user = this.userRepository
+                .findById(Longs.fromBytes(assertion.getResponse().getUserHandle()))
+                .orElseThrow( () ->
+                        new UsernameNotFoundException("User not found.")
+                );
+
+                Authentication fullAuth = new UsernamePasswordAuthenticationToken(
+                                user,
+                                authResult.getCredentials(),
+                                authResult.getAuthorities());
+
+                SecurityContext context = SecurityContextHolder.createEmptyContext();
+                context.setAuthentication(fullAuth);
+
+                SecurityContextHolder.setContext(context);
+
+                this.securityContextRepository.saveContext(context, request, response);
+
+                return fullAuth;
+        }
+
+        public PublicKeyCredentialRequestOptions autoMagicOptions(HttpServletRequest request, HttpServletResponse response) {
+                List<PublicKeyCredentialDescriptor> cred = Collections.emptyList();
+                PublicKeyCredentialRequestOptions options = PublicKeyCredentialRequestOptions.builder()
+                                .challenge(Bytes.random())
+                                .rpId(rpEntity.getId())
+                                .timeout(CustomPublicKeyCredentialCreationOptionsService.TIMEOUT)
+                                .allowCredentials(cred)
+                                .userVerification(UserVerificationRequirement.REQUIRED)
+                                .build();
+                this.requestOptionsRepository.save(request, response, options);
+                return options;
         }
 }

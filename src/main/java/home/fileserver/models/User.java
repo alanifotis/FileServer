@@ -37,9 +37,10 @@ public class User implements UserDetails, Persistable<Long> {
     @Builder.Default
     private String role = "USER";
   
-    @Column(name = "avatar_file_id")
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "avatar_file_id")
     @Builder.Default
-    private Long avatarId = null; 
+    private FileBlob avatar = null;
 
     @Column(length = 10)
     @Builder.Default

@@ -4,17 +4,22 @@ import java.time.Instant;
 import java.util.Set;
 
 import org.jspecify.annotations.Nullable;
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import home.fileserver.dto.FileMetadataDto;
 import home.fileserver.models.FileBlob;
 import home.fileserver.models.FileCategory;
 import home.fileserver.models.FileMetadata;
 import home.fileserver.models.User;
 import home.fileserver.repositories.FileMetadataRepository;
 import home.fileserver.utilities.Snowflake;
+import jakarta.persistence.EntityNotFoundException;
+import lombok.extern.log4j.Log4j2;
 
 @Service
+@Log4j2
 public class FileMetadataService {
     private final FileMetadataRepository metaRepo;
     private final Snowflake snowflake = Snowflake.getInstance();
@@ -70,7 +75,7 @@ public class FileMetadataService {
                 .updatedAt(Instant.now());
     }
 
-    private String resolveDuplicateName(User user, String originalName, Long parentId) {
+    private String resolveDuplicateName(User user, String originalName, @Nullable Long parentId) {
 
         int dotIndex = originalName.lastIndexOf(".");
         String namePart, extPart;
@@ -105,12 +110,54 @@ public class FileMetadataService {
         }
     }
 
-    private void validateParent(User user, Long parentId) {
-        if (parentId == null) return;
-        
+    private void validateParent(User user, @Nullable Long parentId) {
+        if (parentId == null)
+            return;
+
         boolean parentExists = metaRepo.existsByIdAndUser(parentId, user);
         if (!parentExists) {
             throw new IllegalArgumentException("Parent folder not found or access denied");
         }
+    }
+
+    public FileMetadata updateFileMetadata(Long originalId, FileMetadataDto metadataDto, User authenticatedUser) {
+        FileMetadata entity = this.metaRepo.findById(originalId)
+                .orElseThrow(
+                        () -> new EntityNotFoundException("No FileMetadata found with the provided ID: " + originalId));
+
+        entity.setOriginalFilename(renameOriginalLogic(metadataDto.newOriginalName(), entity,metadataDto.newParentId(), authenticatedUser));
+
+        if (authenticatedUser.getId().equals(entity.getUser().getId())) {
+            throw new AccessDeniedException("Access denied.");
+        }
+
+        return this.metaRepo.save(entity);
+    }
+
+    private String renameOriginalLogic(@Nullable String dtoNewName, FileMetadata entity, @Nullable Long dtoId, User user) {
+        if (dtoNewName == null || dtoNewName.isBlank()) {
+            log.info("No rename necessary.");
+            return entity.getOriginalFilename();
+        }
+
+        String newName = dtoNewName.trim();
+
+        if (entity.getOriginalFilename().equals(newName)) {
+            log.info("No rename necessary.");
+            return entity.getOriginalFilename();
+        }
+
+        Long targetParent = (dtoId != null) ? dtoId : entity.getParentId();
+
+        if (metaRepo.existsInFolder(user, newName, targetParent)) {
+                    throw new IllegalArgumentException("A file with this name already exists in the destination.");
+        }
+
+        if (entity.isFolder()) {
+            return newName;
+        }
+
+        return "";
+
     }
 }

@@ -79,7 +79,7 @@ public class FileController {
                 Files.createDirectories(avatarPath);
             }
 
-            user.setAvatarId(0L);
+            user.setAvatar(null);
 
             this.userRepository.save(user);
 

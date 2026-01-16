@@ -87,6 +87,53 @@ document.addEventListener('DOMContentLoaded', async () => {
         return document.cookie.replace(regex, '$1');
     }
 
+    let cooksd = getCsrfToken();
+
+    console.log(cooksd);
+
+    const assertionOptions = await fetch('/automagic', {
+        method: 'GET',
+        headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() }
+    }).then(async (response) => {
+        // FIX 1: Await the JSON body
+        const data = await response.json();
+        // FIX 2: Now pass the actual data to the parser
+        return PublicKeyCredential.parseRequestOptionsFromJSON(data);
+    });
+
+    // 1. Get the Raw Credential
+    const credential = await navigator.credentials.get({
+        publicKey: assertionOptions,
+        signal: abortController.signal, // Note: Use .signal, not .newSignal()
+        mediation: 'required'
+    });
+
+    // 2. Convert to Simple JSON Object
+    // This handles the binary-to-text conversion automatically
+    const attResponse = credential.toJSON();
+
+    console.log("My Payload:", attResponse); // Debug: Should start with { "id": ... }
+
+    // 3. Send it
+    const autoLogin = await fetch('/automagic', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-XSRF-TOKEN': getCsrfToken()
+        },
+        // CRITICAL FIX: You must stringify the body!
+        body: JSON.stringify(attResponse)
+    }).then((response) => {
+        if (response.ok) {
+            return response.json();
+        }
+        throw new Error('Server returned ' + response.status);
+    }).then(data => {
+        console.log("Login Success!", data);
+    }).catch(e => {
+        console.error("Login Failed:", e);
+    });
+
     // 4. Form Submission
     ui.form.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -122,7 +169,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const credentialOptions = {
                 publicKey: loginOptions.options,
                 signal: abortController.newSignal(),
-                mediation: "required"
+                mediation: "conditional"
             };
 
             for (let credId in loginOptions.authContexts) {
@@ -134,14 +181,6 @@ document.addEventListener('DOMContentLoaded', async () => {
                     context.iv = base64url.decode(context.iv);
                 }
             }
-
-            // const useConditionalMediation = await webauthnService.checkPrfSupport();
-
-            // if (useConditionalMediation) {
-            //     console.log(useConditionalMediation);
-            //     // Request a conditional UI
-            //     credentialOptions.mediation = "conditional";
-            // }
 
             console.log(credentialOptions);
 

@@ -8,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
+
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.core.io.Resource;
 import org.springframework.http.HttpHeaders;
@@ -19,10 +20,12 @@ import org.springframework.security.web.webauthn.api.AuthenticatorAssertionRespo
 import org.springframework.security.web.webauthn.api.CredentialRecord;
 import org.springframework.security.web.webauthn.api.PublicKeyCredential;
 import org.springframework.security.web.webauthn.api.PublicKeyCredentialCreationOptions;
+import org.springframework.security.web.webauthn.api.PublicKeyCredentialRequestOptions;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
+
 
 @Controller
 @Log4j2
@@ -40,6 +43,29 @@ public class RegisterController {
     public String loginPage() {
         return "forward:/login.html";
     }
+
+    @GetMapping("/automagic")
+    public ResponseEntity<PublicKeyCredentialRequestOptions> getAutomagicOptions(HttpServletRequest request, HttpServletResponse response) {
+        var options = this.optionsService.autoMagicOptions(request, response);
+        return ResponseEntity.ok(options);
+    }
+
+    @PostMapping("/automagic")
+    public ResponseEntity<?> loginUsingAutomagic(HttpServletRequest request, HttpServletResponse response, @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
+        try {
+        // This is the line causing the issue
+        var ok = this.optionsService.autoMagicLogin(request, response, assertion);
+        return ResponseEntity.ok(ok);
+        
+    } catch (Exception e) {
+        // 1. PRINT THE REAL ERROR
+        e.printStackTrace();
+        
+        // 2. Return JSON instead of throwing (prevents the 302 Redirect)
+        return ResponseEntity.status(401).body("Login Failed: " + e.getMessage());
+    }
+    }
+    
 
     @PostMapping("/login")
     public ResponseEntity<Authentication> postMethodName(HttpServletRequest request, HttpServletResponse response, @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
@@ -121,5 +147,8 @@ public class RegisterController {
 
         return ResponseEntity.ok(options);
     }
+
+   
+
 
 }

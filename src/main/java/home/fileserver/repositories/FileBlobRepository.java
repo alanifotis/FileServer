@@ -11,7 +11,6 @@ import home.fileserver.models.FileBlob;
 @Repository
 public interface FileBlobRepository extends JpaRepository<FileBlob, Long> {
     
-    @Nullable FileBlob findBySha256Hash(String sha256Hash);
-
+    @Nullable FileBlob findBySha256HashAndSizeInBytes(String sha256Hash, long sizeInBytes);
     List<FileBlob> findByRefCountLessThanEqual(long count);
 }

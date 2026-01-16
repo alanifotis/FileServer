@@ -17,7 +17,8 @@ import lombok.Setter;
 
 @Entity
 @Table(name = "file_blobs", indexes = {
-    @Index(name = "idx_blob_hash", columnList = "sha256_hash", unique = true)
+    @Index(name = "idx_blob_hash", columnList = "sha256_hash", unique = true),
+    @Index(name = "idx_blob_hash_size", columnList = "sha256_hash, size_in_bytes", unique = true)
 })
 @Getter 
 @Setter
