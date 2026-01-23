@@ -23,5 +23,20 @@
     "name": "spring.thread-executor",
     "type": "java.lang.String",
     "description": "Simple switch between Virtual Threads and Platform threads."
+  },
+  {
+    "name": "fileserver.permission.policy.header",
+    "type": "java.lang.String",
+    "description": "Selectively enable, disable, and modify the behavior of certain APIs and web features in the browser"
+  },
+  {
+    "name": "fileserver.content.security.policy.header",
+    "type": "java.lang.String",
+    "description": "Control which resources (JavaScript, images, css, etc.) a document is allowed to load and from where."
+  },
+  {
+    "name": "fileserver.allowed.hosts",
+    "type": "java.lang.Array",
+    "description": "Allowed origin hosts required for Webauthn Passkey Identification / Registration."
   }
 ]}

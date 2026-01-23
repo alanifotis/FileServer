@@ -12,6 +12,7 @@ import org.springframework.security.web.authentication.LoginUrlAuthenticationEnt
 import org.springframework.security.web.context.HttpSessionSecurityContextRepository;
 import org.springframework.security.web.context.SecurityContextHolderFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy;
 import org.springframework.security.web.session.HttpSessionEventPublisher;
 import org.springframework.security.web.webauthn.management.UserCredentialRepository;
 import org.springframework.security.web.webauthn.registration.PublicKeyCredentialCreationOptionsRepository;
@@ -29,16 +30,15 @@ import tools.jackson.databind.json.JsonMapper;
 @Log4j2
 class SecurityConfiguration {
 
-        private final String[] ALLOWED_PATHS = {
+        private static final String[] ALLOWED_PATHS = {
                         "/",
                         "/automagic",
+                        "/auth.html",
                         "/favicon/files.png",
                         "/login",
                         "/login/options",
-                        "/login.html",
                         "/login/webauthn",
                         "/register",
-                        "/register.html",
                         "/registration/options",
                         "/install-cert",
                         "/favicon.ico",
@@ -48,18 +48,20 @@ class SecurityConfiguration {
                         "/js/**"
         };
 
-        private final String[] ALLOWED_HOSTS = {
-                        "https://localhost:8443",
-                        "https://192.168.0.149:8443",
-                        "https://192.168.0.149:80",
-                        "https://192.168.10.161:8443",
-                        "https://alanis-laptop.local:8443"
-        };
-
         private final static String[] COOKIES = { "JSESSIONID", "__Host-SESSION", "XSRF-TOKEN" };
+
+
+        @Value("${fileserver.allowed.hosts}")
+        private  String[] ALLOWED_HOSTS;
 
         @Value("${fileserver.publickeycredentialrpentity.id}")
         private String rpEntityId;
+
+        @Value("${fileserver.permission.policy.header}")
+        private String POLICY_PERMISSIONS;
+
+        @Value("${fileserver.content.security.policy.header}")
+        private String CONTENT_SECURITY_POLICY;
 
         @Bean
         SecurityFilterChain securityFilterChain(
@@ -69,55 +71,59 @@ class SecurityConfiguration {
                         ObjectMapper mapper) throws Exception {
 
                 return http
-                                .redirectToHttps(withDefaults())
-                                .authorizeHttpRequests(auth -> {
-                                        auth.requestMatchers(ALLOWED_PATHS).permitAll();
-                                        auth.anyRequest().authenticated();
-                                })
-                                .securityContext(
-                                                context -> context.securityContextRepository(
-                                                                new HttpSessionSecurityContextRepository()))
-                                .webAuthn(passkeys -> {
-                                        passkeys.rpId(rpEntityId);
-                                        passkeys.allowedOrigins(ALLOWED_HOSTS);
-                                        passkeys.creationOptionsRepository(creationOptionsRepository);
-                                        passkeys.disableDefaultRegistrationPage(true);
-                                        HttpMessageConverter<Object> converter = new JacksonJsonHttpMessageConverter(
-                                                        (JsonMapper) mapper);
-                                        passkeys.messageConverter(converter);
-                                })
-                                .formLogin(formLogin -> formLogin
-                                                .loginPage("/login")
-                                                .defaultSuccessUrl("/dashboard")
-                                                .failureUrl("/login?error=true")
-                                                .permitAll()
-                                                .disable())
-                                .logout(logout -> logout
-                                                .logoutUrl("/logout")
-                                                .deleteCookies(COOKIES)
-                                                .invalidateHttpSession(true)
-                                                .clearAuthentication(true)
-                                                .logoutSuccessUrl("/login?logout")
-                                                .permitAll())
-                                .csrf(csrf -> {
-                                        var repo = new CookieCsrfTokenRepository();
-                                        repo.setCookieCustomizer(c -> c.httpOnly(false)
-                                                        .secure(true)
-                                                        .sameSite("Strict")
-                                                        .path("/")
-                                                        .build());
-                                        csrf.csrfTokenRepository(repo);
-                                        csrf.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler());
-                                })
-                                .sessionManagement(session -> session
-                                                .maximumSessions(1)
-                                                .maxSessionsPreventsLogin(false)
-                                                .expiredUrl("/login?expired=true"))
-                                .addFilterBefore(new AbsoluteSessionTimeoutFilter(), SecurityContextHolderFilter.class)
-                                .exceptionHandling(e -> e
-                                                .authenticationEntryPoint(
-                                                                new LoginUrlAuthenticationEntryPoint("/login")))
-                                .build();
+                        .headers(headers -> headers
+                                        .permissionsPolicyHeader(
+                                                permissions -> permissions.policy(
+                                                        POLICY_PERMISSIONS))
+                                        .contentSecurityPolicy(csp -> 
+                                                csp.policyDirectives(CONTENT_SECURITY_POLICY))
+                                        .referrerPolicy(referrer -> referrer.policy(ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+                                )
+                        .redirectToHttps(withDefaults())
+                        .authorizeHttpRequests(auth -> {
+                                auth.requestMatchers(ALLOWED_PATHS).permitAll();
+                                auth.anyRequest().authenticated();
+                        })
+                        .securityContext(
+                                        context -> context.securityContextRepository(
+                                                        new HttpSessionSecurityContextRepository()))
+                        .webAuthn(passkeys -> {
+                                passkeys.rpId(rpEntityId);
+                                passkeys.allowedOrigins(ALLOWED_HOSTS);
+                                passkeys.creationOptionsRepository(creationOptionsRepository);
+                                passkeys.disableDefaultRegistrationPage(true);
+                                HttpMessageConverter<Object> converter = new JacksonJsonHttpMessageConverter(
+                                                (JsonMapper) mapper);
+                                passkeys.messageConverter(converter);
+                        })
+                        .formLogin(formLogin -> formLogin.disable())
+                        .logout(logout -> logout
+                                        .logoutUrl("/logout")
+                                        .deleteCookies(COOKIES)
+                                        .invalidateHttpSession(true)
+                                        .clearAuthentication(true)
+                                        .logoutSuccessUrl("/login?logout")
+                                        .permitAll())
+                        .csrf(csrf -> {
+                                var repo = new CookieCsrfTokenRepository();
+                                repo.setCookieCustomizer(c -> c.httpOnly(false)
+                                                .secure(true)
+                                                .sameSite("Strict")
+                                                .path("/")
+                                                .build());
+                                csrf.csrfTokenRepository(repo);
+                                csrf.csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler());
+                        })
+                        .sessionManagement(session -> session
+                                        .sessionFixation().changeSessionId()
+                                        .maximumSessions(5)
+                                        .maxSessionsPreventsLogin(false)
+                                        .expiredUrl("/login?expired=true"))
+                        .addFilterBefore(new AbsoluteSessionTimeoutFilter(), SecurityContextHolderFilter.class)
+                        .exceptionHandling(e -> e
+                                        .authenticationEntryPoint(
+                                                        new LoginUrlAuthenticationEntryPoint("/login")))
+                        .build();
         }
 
         @Bean

@@ -1,68 +1,5 @@
-import webauthnService from "./services/webauthn-service.js";
-import http from "./utils/http.js";
-import abortController from "./utils/abort-controller.js";
-import base64url from "./utils/base64url.js";
 
-
-const regex = /(?:(?:^|.*;\s*)XSRF-TOKEN\s*\=\s*([^;]*).*$)|^.*$/;
-
-/**  --- UI Helper Functions (The "View" Layer) ---
- * 
- * Based on the pattern from webauthn-registration.js
- * 
- * @param {HTMLElement} element The HTML UI element
- * @param {Boolean} isVisible Visibility toggle
- * @param {String} level - CSS class name can be warning, error or success.
-*/
-function setVisibility(element, isVisible, level) {
-    if (!element) return;
-    if (isVisible) {
-        element.classList.remove('hidden');
-        element.classList.add(level)
-    } else {
-        element.classList.add('hidden');
-        element.classList.remove(level);
-    }
-}
-
-function resetPopups(ui) {
-    setVisibility(ui.successArea, false);
-    setVisibility(ui.errorArea, false);
-    ui.successArea.textContent = '';
-    ui.errorArea.textContent = '';
-}
-
-function setError(ui, msg, level) {
-    resetPopups(ui);
-    if (!ui.errorArea) return;
-    ui.errorArea.textContent = msg;
-    setVisibility(ui.errorArea, true, level);
-}
-
-function setSuccess(ui, msg) {
-    resetPopups(ui);
-    if (!ui.successArea) return;
-    ui.successArea.textContent = msg;
-    setVisibility(ui.successArea, true);
-}
-
-function setLoading(ui, isLoading) {
-    ui.submitBtn.disabled = isLoading;
-    if (isLoading) {
-        ui.submitBtn.querySelector('.btn-text').textContent = 'Check your device...';
-        ui.spinner.classList.remove('hidden');
-    } else {
-        ui.submitBtn.querySelector('.btn-text').textContent = 'Sing In';
-        ui.spinner.classList.add('hidden');
-    }
-}
-
-// --- Main Controller Logic ---
-document.addEventListener('DOMContentLoaded', async () => {
-
-    // 1. Define the UI Object
-    // This creates a single source of truth for all DOM elements
-    const ui = {
+const ui = {
         form: document.getElementById('registerForm'),
         submitBtn: document.getElementById('submitBtn'),
         emailInput: document.getElementById('email'),
@@ -87,10 +24,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         return document.cookie.replace(regex, '$1');
     }
 
-    let cooksd = getCsrfToken();
-
-    console.log(cooksd);
-
     const assertionOptions = await fetch('/automagic', {
         method: 'GET',
         headers: { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() }
@@ -104,24 +37,19 @@ document.addEventListener('DOMContentLoaded', async () => {
     // 1. Get the Raw Credential
     const credential = await navigator.credentials.get({
         publicKey: assertionOptions,
-        signal: abortController.signal, // Note: Use .signal, not .newSignal()
-        mediation: 'required'
+        signal: abortController.newSignal(),
+        mediation: 'conditional'
     });
 
-    // 2. Convert to Simple JSON Object
-    // This handles the binary-to-text conversion automatically
+
     const attResponse = credential.toJSON();
 
-    console.log("My Payload:", attResponse); // Debug: Should start with { "id": ... }
-
-    // 3. Send it
     const autoLogin = await fetch('/automagic', {
         method: 'POST',
         headers: {
             'Content-Type': 'application/json',
             'X-XSRF-TOKEN': getCsrfToken()
         },
-        // CRITICAL FIX: You must stringify the body!
         body: JSON.stringify(attResponse)
     }).then((response) => {
         if (response.ok) {
@@ -160,66 +88,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             // Step A: Get Options
             // We use the email to identify the user
-            const loginOptions = await webauthnService.getLoginOptions(
-                headers,
-                '/login/options',
-                { email: email }
-            );
-
-            const credentialOptions = {
-                publicKey: loginOptions.options,
-                signal: abortController.newSignal(),
-                mediation: "conditional"
-            };
-
-            for (let credId in loginOptions.authContexts) {
-                const context = loginOptions.authContexts[credId];
-
-                if (typeof context.salt === 'string') {
-                    context.salt = base64url.decode(context.salt);
-                    context.wrappedKey = base64url.decode(context.wrappedKey);
-                    context.iv = base64url.decode(context.iv);
-                }
-            }
-
-            console.log(credentialOptions);
-
-            const assertionResponse = await navigator.credentials.get(credentialOptions);
-
-            console.log(assertionResponse, base64url.encode(assertionResponse.getClientExtensionResults().prf.results.first));
-
-            const auth = loginOptions.authContexts[assertionResponse.id];
-
-            console.log(auth);
-
-            const keyEncryptionKey = await crypto.subtle.importKey(
-                "raw",
-                assertionResponse.getClientExtensionResults().prf.results.first,
-                "AES-GCM",
-                false,
-                ["decrypt"]
-            );
-
-            const unwrappedKeyBuffer = await crypto.subtle.decrypt(
-                { name: "AES-GCM", iv: auth.iv },
-                keyEncryptionKey,
-                auth.wrappedKey
-            );
-
-            console.log(base64url.encode(unwrappedKeyBuffer));
-
-            const okResponse = await webauthnService.login('/login', headers, assertionResponse);
-
-            setError(ui, "Loged in successfully! Redirecting...", "success");
-
-            let whoI = await http.post('/api/me', headers, null, "GET", true);
-
-            whoI = await whoI.json();
-
-            console.log(whoI);
-
-            setTimeout(() => window.location.href = '/dashboard', 2500);
-
+            
         } catch (error) {
             console.error(error);
             if (error.name === 'NotAllowedError') {
@@ -236,4 +105,3 @@ document.addEventListener('DOMContentLoaded', async () => {
     ui.emailInput.addEventListener('input', () => {
         ui.submitBtn.disabled = !ui.emailInput.checkValidity();
     });
-});

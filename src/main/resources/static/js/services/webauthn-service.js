@@ -4,7 +4,8 @@ import abortController from "../utils/abort-controller.js";
 
 /**
  * Checks if the browser/device supports the specific encryption (PRF) feature we need.
- * Used to warn users early if their device is too old.
+ * Used to warn users early if their device doesn't support the feature.
+ * @returns {boolean}
  */
 async function checkPrfSupport() {
 
@@ -167,7 +168,7 @@ async function login(endpoint, headers, assertionCredetials) {
       })}`);
     }
 
-    response = await response.json();
+    // response = await response.json();
 
     // const options = PublicKeyCredential.parseRequestOptionsFromJSON(response.options);
 

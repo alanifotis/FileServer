@@ -36,12 +36,16 @@ public class RegisterController {
 
     @GetMapping("/register")
     public String registerPage() {
-        return "forward:/register.html";
+        return this.getAuthhtml();
     }
 
-    @GetMapping("/login")
+     @GetMapping("/login")
     public String loginPage() {
-        return "forward:/login.html";
+        return this.getAuthhtml();
+    }
+
+    private String getAuthhtml() {
+        return "forward:/auth.html";
     }
 
     @GetMapping("/automagic")

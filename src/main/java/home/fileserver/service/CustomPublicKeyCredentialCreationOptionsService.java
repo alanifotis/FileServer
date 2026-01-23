@@ -288,12 +288,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 if (options == null) {
                         throw new BadCredentialsException("Unable to authenticate the PublicKeyCredential. No PublicKeyCredentialRequestOptions found.");
                 }
-
-                String expectedChallenge = options.getChallenge().toBase64UrlString();
-                String clientChallenge = assertion.getResponse().getClientDataJSON().toBase64UrlString();
-
-                log.warn("Expected: {}, Result: {}", expectedChallenge, clientChallenge);
-
+                
                 RelyingPartyAuthenticationRequest authenticationRequest = new RelyingPartyAuthenticationRequest(options,
                                 assertion);
                 WebAuthnAuthenticationRequestToken token = new WebAuthnAuthenticationRequestToken(

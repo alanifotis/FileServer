@@ -1,5 +1,7 @@
-document.addEventListener("DOMContentLoaded", () => {
+import createPolicy from './utils/policy-creator.js';
 
+document.addEventListener("DOMContentLoaded", async () => {
+    const policy = await createPolicy();
     // --- 1. CONFIG & UTILS ---
     const fileGrid = document.getElementById('file-grid');
     const folderList = document.getElementById('folder-list');
