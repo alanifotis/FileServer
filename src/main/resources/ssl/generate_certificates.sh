@@ -45,6 +45,7 @@ DNS_LIST=(
   "alanis-laptop.local"
   "home.local"
   "pixel.local"
+  "192.168.0.149.nip.io"
 )
 
 # Network Configuration (Add your IPs here)

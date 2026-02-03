@@ -18,11 +18,13 @@ function createPolicy() {
                 }
                 throw new Error(`Security Violation: ${url} is not an authorized script.`);
             },
-            createHTML: (html) => { return html; }
+            createHTML: (html) => { return html; },
+            createScript: (css) => { return css; }
+
         });
     }
 
-    return policy;  
+    return;  
 }
 
 export default createPolicy

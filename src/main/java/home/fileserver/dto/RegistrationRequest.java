@@ -11,7 +11,6 @@ import home.fileserver.models.User;
 /**
  * 1. ROOT LEVEL
  * Matches: "email", "credentials", "prfContext"
- * TODO: Try to replace CredentialsDto credentials to the actual PublicKeyCredential<AuthenticatorAttestationResponse>
  */
 public record RegistrationRequest(
         String email,

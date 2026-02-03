@@ -9,7 +9,6 @@ import home.fileserver.models.PrfAuthenticationExtensionsClientInput;
 import home.fileserver.models.PrfAuthenticationExtensionsClientInput.Eval;
 import home.fileserver.models.User;
 import home.fileserver.models.CustomUserCredential;
-import home.fileserver.models.FileCategory;
 import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.repositories.CustomUserCredentialRepository;
 import home.fileserver.utilities.Longs;
@@ -62,7 +61,6 @@ public class CustomPublicKeyCredentialCreationOptionsService {
         private final CustomUserCredentialRepository credentialRepository;
         private final PublicKeyCredentialRequestOptionsRepository requestOptionsRepository;
         private final AuthenticationProvider authenticationManager;
-        private final FileStorageService fileStorageService;
         private final SecurityContextRepository securityContextRepository = new HttpSessionSecurityContextRepository();
         private static final String LABEL = "Registration Key";
         private final FileMetadataService metadataService;
@@ -135,8 +133,10 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         return null;
                 }
 
-                this.saveUserCreateRootDirectorySaveRootMetadata(
-                                dto.toUser(Longs.fromBytes(options.getUser().getId()), dto.email()));
+                var newUser = dto.toUser(Longs.fromBytes(options.getUser().getId()), dto.email());
+
+                this.userRepository.save(newUser);
+                this.metadataService.instantiateRootDirectoryAndMetadata(newUser);
 
                 var registrationRequest = new ImmutableRelyingPartyRegistrationRequest(options,
                                 new RelyingPartyPublicKey(dto.toPublicKeyCredential(), LABEL));
@@ -183,7 +183,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                                                 .commaDelimitedListToStringArray(cred.getAuthenticatorTransports())) {
                                         try {
                                                 transports.add(AuthenticatorTransport.valueOf(t));
-                                        } catch (IllegalArgumentException ignored) {
+                                        } catch (IllegalArgumentException _) {
                                                 // Ignore unknown transports see:
                                                 // https://www.w3.org/TR/webauthn-3/#enum-transport
                                         }
@@ -199,11 +199,16 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                                         .transports(transports)
                                         .build());
 
-                        Bytes specificSalt = Bytes.fromBase64(cred.getPrfSalt());
+                                        Bytes specificSalt = null;
 
-                        evalByCredentialMap.put(
+                                        try {
+                                                specificSalt = Bytes.fromBase64(cred.getPrfSalt());
+                                        } catch (IllegalArgumentException e) {
+                                               log.error(e.getMessage());
+                                        } 
+                                        evalByCredentialMap.put(
                                         cred.getCredentialId(),
-                                        Map.of("first", specificSalt));
+                                        Map.of("first", specificSalt == null ? Bytes.random() : specificSalt));
                 }
 
                 AuthenticationExtensionsClientInput<Map<String, Object>> inputs = new ImmutableAuthenticationExtensionsClientInput<Map<String, Object>>(
@@ -259,6 +264,8 @@ public class CustomPublicKeyCredentialCreationOptionsService {
 
                 this.securityContextRepository.saveContext(context, request, response);
 
+                this.metadataService.instantiateRootDirectoryAndMetadata(user);
+
                 return fullAuth;
 
         }
@@ -272,56 +279,81 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                                 List.of(credProps, prfInput));
         }
 
-        private void saveUserCreateRootDirectorySaveRootMetadata(User newUser) {
-                var user = userRepository.save(newUser);
+        public boolean registerAndLogin(RegistrationRequest dto, HttpServletRequest request, HttpServletResponse response) {
 
-                fileStorageService.initUserRoot(newUser.getId());
+                var userCheck = this.userRepository.findByEmail(dto.email());
 
-                this.metadataService.saveDirectoryMetadata(user, "Home", null, FileCategory.HOME);
+                if (userCheck != null) {
+                        return false;
+                }
 
-                return;
+                PublicKeyCredentialCreationOptions options = this.creationOptionsRepository.load(request);
+
+                if (options == null) {
+                        return false;
+                }
+
+                var newUser = dto.toUser(Longs.fromBytes(options.getUser().getId()), dto.email());
+
+                this.userRepository.save(newUser);
+
+                this.metadataService.instantiateRootDirectoryAndMetadata(newUser);
+
+                var registrationRequest = new ImmutableRelyingPartyRegistrationRequest(options,
+                                new RelyingPartyPublicKey(dto.toPublicKeyCredential(), LABEL));
+
+                CredentialRecord _ = ScopedValue
+                                .where(CustomJdbcUserCredentialRepository.PRF_SCOPE, new PrfContext("No PRF.", "No PRF.", "No PRF."))
+                                .call(() -> {
+                                        return this.rpOptions.registerCredential(registrationRequest);
+                                });
+
+                this.creationOptionsRepository.save(request, response, null);
+
+                return true;
+                
         }
 
-        public Authentication autoMagicLogin(HttpServletRequest request, HttpServletResponse response, @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
+        public Authentication autoMagicLogin(HttpServletRequest request, HttpServletResponse response,
+                        @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
                 PublicKeyCredentialRequestOptions options = this.requestOptionsRepository.load(request);
 
                 if (options == null) {
-                        throw new BadCredentialsException("Unable to authenticate the PublicKeyCredential. No PublicKeyCredentialRequestOptions found.");
+                        throw new BadCredentialsException(
+                                        "Unable to authenticate the PublicKeyCredential. No PublicKeyCredentialRequestOptions found.");
                 }
-                
+
                 RelyingPartyAuthenticationRequest authenticationRequest = new RelyingPartyAuthenticationRequest(options,
                                 assertion);
-                WebAuthnAuthenticationRequestToken token = new WebAuthnAuthenticationRequestToken(
-                                authenticationRequest);
+                WebAuthnAuthenticationRequestToken token = new WebAuthnAuthenticationRequestToken(authenticationRequest);
 
-                Authentication authResult = this.authenticationManager.authenticate(token);
+                
+                        Authentication authResult = this.authenticationManager.authenticate(token);
+                        this.requestOptionsRepository.save(request, response, null);
 
-                this.requestOptionsRepository.save(request, response, null);
+                        request.changeSessionId();
 
-                request.changeSessionId();
+                        User user = this.userRepository
+                                        .findById(Longs.fromBytes(assertion.getResponse().getUserHandle()))
+                                        .orElseThrow(() -> new UsernameNotFoundException("User not found."));
 
-                User user = this.userRepository
-                .findById(Longs.fromBytes(assertion.getResponse().getUserHandle()))
-                .orElseThrow( () ->
-                        new UsernameNotFoundException("User not found.")
-                );
+                        Authentication fullAuth = new UsernamePasswordAuthenticationToken(
+                                        user,
+                                        authResult.getCredentials(),
+                                        authResult.getAuthorities());
 
-                Authentication fullAuth = new UsernamePasswordAuthenticationToken(
-                                user,
-                                authResult.getCredentials(),
-                                authResult.getAuthorities());
+                        SecurityContext context = SecurityContextHolder.createEmptyContext();
+                        context.setAuthentication(fullAuth);
 
-                SecurityContext context = SecurityContextHolder.createEmptyContext();
-                context.setAuthentication(fullAuth);
+                        SecurityContextHolder.setContext(context);
 
-                SecurityContextHolder.setContext(context);
+                        this.securityContextRepository.saveContext(context, request, response);
 
-                this.securityContextRepository.saveContext(context, request, response);
-
-                return fullAuth;
+                        return fullAuth;
         }
 
-        public PublicKeyCredentialRequestOptions autoMagicOptions(HttpServletRequest request, HttpServletResponse response) {
+        public PublicKeyCredentialRequestOptions autoMagicOptions(HttpServletRequest request,
+                        HttpServletResponse response) {
                 List<PublicKeyCredentialDescriptor> cred = Collections.emptyList();
                 PublicKeyCredentialRequestOptions options = PublicKeyCredentialRequestOptions.builder()
                                 .challenge(Bytes.random())

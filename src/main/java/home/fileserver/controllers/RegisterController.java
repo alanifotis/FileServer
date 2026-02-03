@@ -57,16 +57,14 @@ public class RegisterController {
     @PostMapping("/automagic")
     public ResponseEntity<?> loginUsingAutomagic(HttpServletRequest request, HttpServletResponse response, @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
         try {
-        // This is the line causing the issue
         var ok = this.optionsService.autoMagicLogin(request, response, assertion);
         return ResponseEntity.ok(ok);
         
-    } catch (Exception e) {
-        // 1. PRINT THE REAL ERROR
+    } 
+    
+    catch (Exception e) {
         e.printStackTrace();
-        
-        // 2. Return JSON instead of throwing (prevents the 302 Redirect)
-        return ResponseEntity.status(401).body("Login Failed: " + e.getMessage());
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
     }
     
@@ -90,7 +88,7 @@ public class RegisterController {
 
     @PostMapping("/register")
     // @ResponseStatus(code = HttpStatus.CREATED, reason = "User exists.")
-    public ResponseEntity<CredentialRecord> postMethodName(
+    public ResponseEntity<CredentialRecord> registerWithPrf(
             HttpServletRequest request,
             HttpServletResponse response,
             @RequestBody RegistrationRequest dto) {
@@ -131,28 +129,12 @@ public class RegisterController {
             @RequestBody PasskeyRegistrationRequestDto dto,
             HttpServletRequest request,
             HttpServletResponse response) {
-        log.info("Starting registration for: {}", dto.email());
-
-        // // 1. Check if user exists
-        // if (repo.findByEmail(email) != null) {
-        // log.warn("User already exists: {}", email);
-        // return ResponseEntity.status(HttpStatus.CONFLICT).build();
-        // }
-
-        // 2. Generate Options (using your custom service)
-
         PublicKeyCredentialCreationOptions options = this.optionsService
                 .getPublicKeyCredentialCreationOptions(dto, request, response);
 
         log.info("RpID: {}", options.getRp().getId());
 
-        response.setStatus(HttpServletResponse.SC_OK);
-        response.setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE);
-
         return ResponseEntity.ok(options);
     }
-
-   
-
 
 }

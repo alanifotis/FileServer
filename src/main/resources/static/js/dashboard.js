@@ -1,10 +1,16 @@
+'use strict';
+
+import createPolicy from './utils/policy-creator.js';
+
+createPolicy();
+
 const regex = /(?:(?:^|.*;\s*)XSRF-TOKEN\s*\=\s*([^;]*).*$)|^.*$/;
 function getCsrfToken() { return document.cookie.replace(regex, '$1'); }
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
     // 1. Your Backend Data
-    const userData = fetch('/api/me', {
+    const userData = await fetch('/api/me', {
         method: 'GET',
         headers: { 'Accept': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() },
     })
@@ -12,7 +18,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(response.status);
             return response.json();
         })
-        .then((data) => { return data })
+        .then((data) => {  return data; })
         .catch((error) => { console.error('Error:', error) });
 
     populateDashboard(userData);
@@ -49,16 +55,10 @@ function populateDashboard(user) {
         avatarEl.style.color = 'white';
     }
 
-    // --- 3. Storage Bar ---
-    // Assuming 5GB Limit for Free Tier
-
     const usedBytes = user.storageUsedBytes;
     document.querySelector('.storage-amount').textContent = formatBytes(usedBytes);
 
-    // --- 4. Root Folder Link ---
     const rootLink = document.querySelector('.root-link');
-    // Update the HREF to point to your actual file route
-    rootLink.href = `/files/${user.rootFolderId}`;
 }
 
 // --- Helpers ---
@@ -66,13 +66,23 @@ function populateDashboard(user) {
 const reg1 = /(\b\S)?/g;
 const reg2 = /(^\S|\S$)?/g;
 
+/**
+ * @param {string} name 
+ */
 function getInitials(name) {
-    return name
-        .match(reg1)
-        .join("")
-        .match(reg2)
-        .join("")
-        .toUpperCase();
+    try {
+        const match = 
+            name.match(reg1)
+            .join("")
+            .match(reg2)
+            .join("")
+            .toUpperCase();
+        return match;
+    } catch (error) {
+        console.log(error);
+        return '';
+    }
+
 }
 
 function formatBytes(bytes, decimals = 2) {
@@ -86,14 +96,19 @@ function formatBytes(bytes, decimals = 2) {
 
 function stringToColor(str) {
     let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-        hash = str.charCodeAt(i) + ((hash << 5) - hash);
+    if (str) {
+        for (let i = 0; i < str.length; i++) {
+            hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        }
     }
-    // HSL color for pleasant pastels: Hue = hash, Saturation = 70%, Lightness = 45%
+
     return `hsl(${hash % 360}, 70%, 45%)`;
 }
 
-document.querySelector('.avatar-input').addEventListener('change', function (event) {
+const avatatIcon = document.querySelector('.avatar-input');
+
+
+avatatIcon.addEventListener('change', function (event) {
     if (event.target.files && event.target.files[0]) {
         const file = event.target.files[0];
 

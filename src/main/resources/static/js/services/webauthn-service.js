@@ -35,23 +35,17 @@ async function checkPrfSupport() {
  */
 
 async function getRegistrationOptions(headers, endpoint, email) {
-  try {
-    const response = await http.post(endpoint, headers, email);
-    if (!response.ok) {
-      throw new Error(`Server error: ${response.status}\n ${response.text().then((text) => {
-        console.error(`Server Message: ${text}`);
-      })}`);
-    }
 
-    const options = await response.json();
+  const response = await http.post(endpoint, headers, email);;
 
-    const defResponse = PublicKeyCredential.parseCreationOptionsFromJSON(options);
+        if (!response.ok) {
+            const errorMsg = await response.text().catch(() => "Unknown Server Error");
+            throw new HttpError(response.status, errorMsg);
+        }
+        
+        const options = await response.json();
 
-    return defResponse;
-
-  } catch (err) {
-    throw new Error(`Failed to fetch options: ${err.message}`, { cause: err });
-  }
+        return PublicKeyCredential.parseCreationOptionsFromJSON(options);
 }
 
 async function getLoginOptions(headers, endpoint, email) {
@@ -67,7 +61,7 @@ async function getLoginOptions(headers, endpoint, email) {
 
     const options = PublicKeyCredential.parseRequestOptionsFromJSON(response.options);
 
-    return {options: options, authContexts: response.authContexts};
+    return { options: options, authContexts: response.authContexts };
 
   } catch (err) {
     throw new Error(`Failed to fetch options: ${err.message}`, { cause: err });
@@ -79,16 +73,16 @@ async function getLoginOptions(headers, endpoint, email) {
  */
 async function createPasskey(options) {
 
-  let credentialsContainer;
-  try {
-    credentialsContainer = await navigator.credentials.create({
-      publicKey: options,
-      signal: abortController.newSignal(),
-    });
-  } catch (err) {
-    throw err;
+  const credential = await navigator.credentials.create({
+    publicKey: options,
+    signal: abortController.newSignal(),
+  })
+
+  if (!credential) {
+    throw new DOMException("Operation aborted.", "AbortError");
   }
-  return credentialsContainer;
+
+  return credential.toJSON();
 }
 
 async function createPrfSecretKey(extResults, rawId, salt) {
@@ -112,7 +106,7 @@ async function createPrfSecretKey(extResults, rawId, salt) {
         extensions: {
           prf: {
             eval: {
-              first: salt // Send the same salt again
+              first: salt
             }
           }
         }
@@ -167,11 +161,6 @@ async function login(endpoint, headers, assertionCredetials) {
         console.error(`Server Message: ${text}`);
       })}`);
     }
-
-    // response = await response.json();
-
-    // const options = PublicKeyCredential.parseRequestOptionsFromJSON(response.options);
-
     return response;
 
   } catch (err) {

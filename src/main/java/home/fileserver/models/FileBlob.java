@@ -31,8 +31,7 @@ public class FileBlob {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    // The SHA-256 Hash (Hex string is always 64 chars)
-    @Column(name = "sha256_hash", nullable = false, length = 100, unique = true)
+    @Column(name = "sha256_hash", nullable = false, length = 64, unique = true)
     private String sha256Hash;
 
     @Column(name = "storage_path", nullable = false, length = 500)
@@ -44,7 +43,6 @@ public class FileBlob {
     @Column(name = "content_type", length = 100)
     private String contentType;
 
-    // Reference Counter
     @Column(name = "ref_count", nullable = false)
     @Builder.Default
     private long refCount = 1;

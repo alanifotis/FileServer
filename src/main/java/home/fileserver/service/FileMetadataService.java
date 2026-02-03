@@ -1,13 +1,17 @@
 package home.fileserver.service;
 
+import java.nio.file.Files;
 import java.time.Instant;
+import java.util.List;
+import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
-
 import org.jspecify.annotations.Nullable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import home.fileserver.dto.DirectoryDto;
 import home.fileserver.dto.FileMetadataDto;
 import home.fileserver.models.FileBlob;
 import home.fileserver.models.FileCategory;
@@ -16,148 +20,180 @@ import home.fileserver.models.User;
 import home.fileserver.repositories.FileMetadataRepository;
 import home.fileserver.utilities.Snowflake;
 import jakarta.persistence.EntityNotFoundException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.log4j.Log4j2;
 
 @Service
 @Log4j2
+@RequiredArgsConstructor
 public class FileMetadataService {
+
+    private final LocalFileStorageService localFileStorageService;
+
     private final FileMetadataRepository metaRepo;
+    private final FileBlobService blobService;
     private final Snowflake snowflake = Snowflake.getInstance();
 
-    public FileMetadataService(FileMetadataRepository metaRepo) {
-        this.metaRepo = metaRepo;
+    @Transactional
+    public FileMetadata saveDirectoryMetadata(User user, DirectoryDto dto) {
+
+        Optional<FileMetadata> existing = metaRepo.findByUserAndParentIdAndOriginalFilenameAndIsFolderTrue(
+                user, dto.parentId(), dto.folderName()
+        );
+        if (existing.isPresent()) {
+            return existing.get();
+        }
+
+        FileCategory category = dto.folderName().equalsIgnoreCase("Home") ? FileCategory.HOME : FileCategory.FOLDER;
+
+        return saveInternal(
+            user,
+            dto.parentId(),
+            dto.folderName(),
+            true,
+            category,
+            "inode/directory",
+            null
+        );
     }
 
     @Transactional
-    public FileMetadata saveDirectoryMetadata(
-            User user,
-            String folderName,
-            @Nullable Long parentId,
-            @Nullable FileCategory category) {
-        var meta = baseMetadata(user, folderName, parentId)
-                .isFolder(true)
-                .category(category == null ? FileCategory.FOLDER : category)
-                .blob(null)
-                .contentType("inode/directory")
-                .build();
-        return this.metaRepo.save(meta);
-    }
+    public FileMetadata saveFileMetadata(User user, FileBlob blob, String fileName, String contentType, @Nullable Long parentId) {
 
-    @Transactional
-    public FileMetadata saveFileMetadata(
-            User user,
-            FileBlob blob,
-            String fileName,
-            String contentType,
-            @Nullable Long parentId) {
-
+        String finalName = resolveDuplicateName(user, fileName, parentId);
+        
         FileCategory category = FileCategory.classify(contentType, fileName);
-        var meta = baseMetadata(user, fileName, parentId)
-                .isFolder(false)
-                .category(category == null ? FileCategory.UNKNOWN : category)
-                .blob(blob)
-                .contentType(contentType)
-                .build();
 
-        return this.metaRepo.save(meta);
-
+        return saveInternal(
+            user,
+            parentId,
+            finalName,
+            false,
+            category == null ? FileCategory.UNKNOWN : category,
+            contentType,
+            blob
+        );
     }
 
-    private FileMetadata.FileMetadataBuilder baseMetadata(User user, String originalName, @Nullable Long parentId) {
-        validateParent(user, parentId);
-        return FileMetadata.builder()
-                .user(user)
-                .id(this.snowflake.nextId())
-                .originalFilename(resolveDuplicateName(user, originalName, parentId))
-                .parentId(parentId)
-                .isPublic(false)
-                .isTrashed(false)
-                .updatedAt(Instant.now());
-    }
+    @Transactional
+    public FileMetadata updateFileMetadata(Long id, FileMetadataDto dto, User user) {
+        validateParent(user, id);
 
-    private String resolveDuplicateName(User user, String originalName, @Nullable Long parentId) {
+        FileMetadata entity = this.metaRepo.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("File not found: " + id));
 
-        int dotIndex = originalName.lastIndexOf(".");
-        String namePart, extPart;
-
-        if (dotIndex > 0) {
-            namePart = originalName.substring(0, dotIndex);
-            extPart = originalName.substring(dotIndex);
-        } else {
-            namePart = originalName;
-            extPart = "";
-        }
-
-        String pattern = namePart + " (%)" + extPart;
-
-        Set<String> takenNames = metaRepo.findTakenNames(user, parentId, originalName, pattern);
-
-        if (!takenNames.contains(originalName)) {
-            return originalName;
-        }
-
-        int counter = 1;
-        while (true) {
-            String candidate = String.format("%s (%d)%s", namePart, counter, extPart);
-            if (!takenNames.contains(candidate)) {
-                return candidate;
-            }
-            counter++;
-
-            // Safety Break
-            if (counter > 1000)
-                throw new IllegalStateException("Too many duplicates");
-        }
-    }
-
-    private void validateParent(User user, @Nullable Long parentId) {
-        if (parentId == null)
-            return;
-
-        boolean parentExists = metaRepo.existsByIdAndUser(parentId, user);
-        if (!parentExists) {
-            throw new IllegalArgumentException("Parent folder not found or access denied");
-        }
-    }
-
-    public FileMetadata updateFileMetadata(Long originalId, FileMetadataDto metadataDto, User authenticatedUser) {
-        FileMetadata entity = this.metaRepo.findById(originalId)
-                .orElseThrow(
-                        () -> new EntityNotFoundException("No FileMetadata found with the provided ID: " + originalId));
-
-        entity.setOriginalFilename(renameOriginalLogic(metadataDto.newOriginalName(), entity,metadataDto.newParentId(), authenticatedUser));
-
-        if (authenticatedUser.getId().equals(entity.getUser().getId())) {
+        if (!user.getId().equals(entity.getUser().getId())) {
             throw new AccessDeniedException("Access denied.");
         }
+
+        Long targetParentId = (dto.newParentId() != null) ? dto.newParentId() : entity.getParentId();
+        
+        String targetName = (dto.newOriginalName() != null && !dto.newOriginalName().isBlank())
+                ? dto.newOriginalName().trim()
+                : entity.getOriginalFilename();
+
+        boolean isMove = !Objects.equals(entity.getParentId(), targetParentId);
+        boolean isRename = !targetName.equals(entity.getOriginalFilename());
+
+        if (!isMove && !isRename) {
+            return entity;
+        }
+
+        if (isMove) {
+            if (entity.isFolder() && isCircularMove(entity.getId(), targetParentId)) {
+                throw new IllegalArgumentException("Cannot move a folder into itself or its children.");
+            }
+        }
+
+        if (metaRepo.existsInFolder(user, targetName, targetParentId)) {
+           // throw new IllegalArgumentException("A file named '" + targetName + "' already exists in the destination.");
+           targetName = resolveDuplicateName(user, targetName, targetParentId);
+        }
+
+        entity.setParentId(targetParentId);
+        entity.setOriginalFilename(targetName);
+        entity.setUpdatedAt(Instant.now());
 
         return this.metaRepo.save(entity);
     }
 
-    private String renameOriginalLogic(@Nullable String dtoNewName, FileMetadata entity, @Nullable Long dtoId, User user) {
-        if (dtoNewName == null || dtoNewName.isBlank()) {
-            log.info("No rename necessary.");
-            return entity.getOriginalFilename();
+    private FileMetadata saveInternal(User user, Long parentId, String name, boolean isFolder, FileCategory category, String contentType, FileBlob blob) {
+        validateParent(user, parentId);
+
+        var meta = FileMetadata.builder()
+                .id(this.snowflake.nextId())
+                .user(user)
+                .parentId(parentId)
+                .originalFilename(name)
+                .isFolder(isFolder)
+                .category(category)
+                .contentType(contentType)
+                .blob(blob)
+                .isPublic(false)
+                .isTrashed(false)
+                .updatedAt(Instant.now())
+                .build();
+
+        return this.metaRepo.save(meta);
+    }
+
+    private String resolveDuplicateName(User user, String originalName, @Nullable Long parentId) {
+        int dotIndex = originalName.lastIndexOf(".");
+        String namePart = (dotIndex > 0) ? originalName.substring(0, dotIndex) : originalName;
+        String extPart = (dotIndex > 0) ? originalName.substring(dotIndex) : "";
+        String pattern = namePart + " (%)" + extPart;
+
+        Set<String> takenNames = metaRepo.findTakenNames(user, parentId, originalName, pattern);
+
+        if (!takenNames.contains(originalName)) return originalName;
+
+        for (int i = 1; i <= 1000; i++) {
+            String candidate = String.format("%s (%04d)%s", namePart, i, extPart);
+            if (!takenNames.contains(candidate)) return candidate;
+        }
+        throw new IllegalStateException("Too many duplicates for file: " + originalName);
+    }
+
+    private void validateParent(User user, @Nullable Long parentId) {
+        if (parentId != null && !metaRepo.existsByIdAndUser(parentId, user)) {
+            throw new IllegalArgumentException("Parent folder not found or access denied");
+        }
+    }
+
+    private boolean isCircularMove(Long sourceId, Long targetParentId) {
+        if (targetParentId == null) return false;
+        
+        if (sourceId.equals(targetParentId)) return true;
+
+        return metaRepo.isAncestor(sourceId, targetParentId);
+    }
+
+    @Transactional
+    public void softDelete(Long id, boolean trashed, User user) {
+        validateParent(user, id);
+        metaRepo.updateTrashedRecursive(id, trashed, user.getId(), Instant.now());
+    }
+
+    
+    @Transactional
+    public void hardDelete(Long id, User user) {
+        validateParent(user, id);
+
+        List<Long> blobIdsInTree = metaRepo.findBlobIdsInTree(id, user.getId());
+
+        metaRepo.deleteRecursive(id, user.getId());
+
+        if (!blobIdsInTree.isEmpty()) {
+            blobService.performCleanup(blobIdsInTree);
+        }
+    }
+
+    FileMetadata instantiateRootDirectoryAndMetadata(User user) {
+        if (!Files.exists(this.localFileStorageService.getUserRootPath(user.getId()))) {
+            this.localFileStorageService.initUserRootDirectory(user.getId());
         }
 
-        String newName = dtoNewName.trim();
-
-        if (entity.getOriginalFilename().equals(newName)) {
-            log.info("No rename necessary.");
-            return entity.getOriginalFilename();
-        }
-
-        Long targetParent = (dtoId != null) ? dtoId : entity.getParentId();
-
-        if (metaRepo.existsInFolder(user, newName, targetParent)) {
-                    throw new IllegalArgumentException("A file with this name already exists in the destination.");
-        }
-
-        if (entity.isFolder()) {
-            return newName;
-        }
-
-        return "";
-
+        return this.metaRepo.findById(user.getId())
+            .orElse(   this.saveDirectoryMetadata(user, new DirectoryDto("Home", null)) );
     }
 }

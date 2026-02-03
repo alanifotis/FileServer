@@ -4,7 +4,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
-
 import home.fileserver.dto.UserDto;
 import home.fileserver.models.User;
 import org.springframework.stereotype.Controller;
@@ -15,8 +14,7 @@ import lombok.extern.log4j.Log4j2;
 
 @Controller
 @Log4j2
-public class DashboardController {
-
+public class AthenticatedController {
     @GetMapping("/api/me")
     public ResponseEntity<UserDto> getCurrentUser() {
 
@@ -38,8 +36,7 @@ public class DashboardController {
     }
 
     @GetMapping("/files")
-    public String getFilesPage(HttpServletRequest request, HttpServletResponse response) {
-        response.setHeader("C", null);
+    public String getFilesPage() {
         return "forward:/files.html";
     }
 

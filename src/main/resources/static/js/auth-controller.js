@@ -2,6 +2,7 @@
 
 import webauthnService from "./services/webauthn-service.js";
 import http from "./utils/http.js";
+import exceptionHandler from "./utils/HttpError.js";
 import abortController from "./utils/abort-controller.js";
 import base64url from "./utils/base64url.js";
 
@@ -11,83 +12,13 @@ const regex = /(?:(?:^|.*;\s*)XSRF-TOKEN\s*\=\s*([^;]*).*$)|^.*$/;
 const path = window.location.pathname.replace(/\/$/, "");
 const isPathRegister = path === '/register';
 
-const ui = {
-    form: document.getElementById('registerForm'),
-    submitBtn: document.getElementById('submitBtn'),
-    emailInput: document.getElementById('email'),
-    infoArea: document.getElementById('formFeedback'),
-    spinner: document.querySelector('.spinner')
-};
-
-/**  --- UI Helper Function ---
- * 
- * Toggles HTMLElement Visibility.
- * @param {HTMLElement} element The HTML UI element.
- * @param {Boolean} isVisible Visibility toggle.
- * @param {String} level - CSS class name can be warning, error or success.
- * @returns {void}
-*/
-function setVisibility(element, isVisible, level) {
-    if (!element) return;
-    if (isVisible) {
-        element.classList.remove('hidden');
-        element.classList.add(level)
-    } else {
-        element.classList.add('hidden');
-        element.classList.remove(level);
-    }
-}
-
-
-/**  --- UI Helper Function ---
- * 
- * Resets the information Text and Visibility.
- * @returns {void}
-*/
-function resetPopups() {
-    setVisibility(ui.infoArea, false);
-    ui.infoArea.textContent = '';
-}
-
-/**  --- UI Helper Function ---
- * 
- * Displays Information on the User.
- * @param {string} msg The message to be displayed.
- * @param {string} level - CSS class name can be warning, error or success.
- * @returns {void}
-*/
-function setInfoSpan(msg, level) {
-    resetPopups(ui);
-    if (!ui.infoArea) return;
-    ui.infoArea.textContent = msg;
-    setVisibility(ui.infoArea, true, level);
-}
-
-
-/**  --- UI Helper Function ---
- * 
- * Displays Information on the User.
- * @param {boolean} isLoading The message to be displayed.
- * @returns {void}
-*/
-function setLoading(isLoading) {
-    ui.submitBtn.disabled = isLoading;
-    if (isLoading) {
-        ui.submitBtn.querySelector('.btn-text').textContent = 'Check your device...';
-        ui.spinner.classList.remove('hidden');
-    } else {
-        ui.submitBtn.querySelector('.btn-text').textContent = isPathRegister ? 'Register' : 'Sign In';
-        ui.spinner.classList.add('hidden');
-    }
-}
-
-
+export default isPathRegister;
 
 const hasPrf = await webauthnService.checkPrfSupport();
 
 if (!hasPrf) {
     console.error("PRF extension not supported.");
-    setInfoSpan(ui, "Your device doesn't support PRF. Try using Chrome on Desktop / Laptop.", "error");
+    exceptionHandler.setInfoSpan("Your device doesn't support PRF. Try using Chrome on Desktop / Laptop.", "error");
 }
 
 /**
@@ -96,6 +27,10 @@ if (!hasPrf) {
  */
 function getCsrfToken() {
     return document.cookie.replace(regex, '$1');
+}
+
+if (!isPathRegister) {
+    await automagic();
 }
 
 function parseAuthenticatorData(authDataBuffer) {
@@ -146,13 +81,11 @@ function parseAuthenticatorData(authDataBuffer) {
             extensionDataIncluded: hasExtensionData
         },
         signCount,
-        aaguid // Will be null if not present
+        aaguid
     };
 }
 
-// Fixed Helper: Convert 16 bytes to UUID string safely
 function stringifyUUID(arr) {
-    // Fix: Use Array.from() instead of [...arr] to prevent "not iterable" errors
     const hex = Array.from(arr).map(b => b.toString(16).padStart(2, '0'));
 
     return [
@@ -165,51 +98,79 @@ function stringifyUUID(arr) {
 }
 
 // 4. Form Submission
-ui.form.addEventListener('submit', async (e) => {
+exceptionHandler.ui.form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
-    if (!ui.emailInput.checkValidity()) {
-        ui.emailInput.reportValidity();
+    if (!exceptionHandler.ui.emailInput.checkValidity()) {
+        exceptionHandler.ui.emailInput.reportValidity();
         return;
     }
 
-    const email = ui.emailInput.value;
+    const email = exceptionHandler.ui.emailInput.value;
     const csrfToken = getCsrfToken();
 
     // Fail fast if CSRF is missing
     if (!csrfToken) {
-        setInfoSpan(ui, "Security Error: Missing CSRF Token. Please refresh the page.");
+        exceptionHandler.setInfoSpan("Security Error: Missing CSRF Token. Please refresh the page.", "error");
         return;
     }
 
     const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken };
 
-    resetPopups();
-    setLoading(true);
+    exceptionHandler.resetPopups();
+    exceptionHandler.setLoading(true);
 
-    try {
-        if (isPathRegister) {
-            await register(email, headers);
-        } else {
-            await login(email, headers);
-        }
-
-    } catch (error) {
-        console.error(error);
-        if (error.name === 'NotAllowedError') {
-            setInfoSpan(ui, "Setup cancelled. Try again when ready.", "warning");
-        } else if (error.name === 'AbortError') {
-            setInfoSpan(ui, "The operation was aborted. Try again.", "error");
-        } else {
-            setInfoSpan(ui, error.message || "An unexpected error occurred.", "error");
-        }
-    } finally {
-        setLoading(ui, false);
+    if (isPathRegister) {
+        await registerWithoutPrf(email, headers);
+    } else {
+        await login(email, headers);
     }
+
 });
 
+async function registerWithoutPrf(email, headers) {
 
-async function register(email, headers) {
+    exceptionHandler.setLoading(true);
+    exceptionHandler.setInfoSpan("", "info");
+
+    try {
+
+        const registrationOptions = await webauthnService.getRegistrationOptions(
+            headers,
+            '/registration/options',
+            { email: email }
+        );
+
+        const credentials = await webauthnService.createPasskey(registrationOptions);
+
+        const payload = {
+            email: email,
+            credentials: credentials,
+            prfContext: {
+                salt: "noprf",
+                wrappedKey: "noprf",
+                iv: "noprf"
+            }
+        };
+
+        const response = await http.post('/register', headers, payload);
+
+        if (!response.ok) {
+            throw new exceptionHandler.HttpError(response.status, "Registration failed on server.");
+        }
+
+        exceptionHandler.setInfoSpan("Account created successfully! Redirecting to login...", "success");        
+        setTimeout(() => window.location.href = '/login', 1500);
+
+    } catch (error) {
+        exceptionHandler.handlePasskeyError(error);
+    } finally {
+        exceptionHandler.setLoading(false);
+    }
+}
+
+
+async function registerWithPrf(email, headers) {
     const registrationOptions = await webauthnService.getRegistrationOptions(
         headers,
         '/registration/options',
@@ -233,11 +194,10 @@ async function register(email, headers) {
     let encryptionPayload = null;
 
     if (prfResult) {
-        setInfoSpan(ui, base64url.encode(prfResult), "success");
+        exceptionHandler.setInfoSpan("PRF Encryption Enabled.", "success");
         encryptionPayload = await webauthnService.createPayload(salt, prfResult);
     } else {
-        setInfoSpan(ui, "Your device does not support secure encryption (PRF). Registration cancelled.", "error");
-        throw new Error("Your device does not support secure encryption (PRF). Registration cancelled.");
+        exceptionHandler.setInfoSpan("Your device does not support secure encryption (PRF).", "warning");
     }
 
     const payload = {
@@ -255,14 +215,99 @@ async function register(email, headers) {
         body: JSON.stringify(payload)
     };
 
-    const credentialRecord = await fetch('/register', request);
+    let credentialRecord = null;
+
+    try {
+        credentialRecord = await fetch('/register', request);
+    } catch (error) {
+        console.error(error);
+        if (error.name === 'NotAllowedError') {
+            exceptionHandler.setInfoSpan("Setup cancelled. Try again when ready.", "warning");
+        } else if (error.name === 'AbortError') {
+            exceptionHandler.setInfoSpan("The operation was aborted. Try again.", "error");
+        } else {
+            exceptionHandler.setInfoSpan(error.message || "An unexpected error occurred.", "error");
+        }
+    } finally {
+        exceptionHandler.setLoading(false);
+    }
+
 
     if (!credentialRecord.ok) {
-        setInfoSpan(ui, credentialRecord.statusText || "An unexpected error occurred.", 'error');
+        exceptionHandler.setInfoSpan(credentialRecord.statusText || "An unexpected error occurred.", 'error');
         return;
     }
-    setInfoSpan("Account created successfully! Redirecting to login page...", "success");
+    exceptionHandler.setInfoSpan("Account created successfully! Redirecting to login page...", "success");
     setTimeout(() => window.location.href = '/login', 2000);
+}
+
+async function automagic() {
+    exceptionHandler.setLoading(true);
+    exceptionHandler.setInfoSpan("", "info");
+        
+    try {
+        const optionsRes = await fetch('/automagic', {
+            method: 'GET',
+            headers: { 
+                'Content-Type': 'application/json', 
+                'X-XSRF-TOKEN': getCsrfToken() 
+            }
+        });
+
+        if (!optionsRes.ok) {
+            throw new exceptionHandler.HttpError(optionsRes.status, "Failed to initialize login.");
+        }
+
+        const optionsData = await optionsRes.json();
+        
+        // Transform JSON to Binary (Safe parsing)
+        const assertionOptions = PublicKeyCredential.parseRequestOptionsFromJSON(optionsData);
+
+        // --- STEP 2: BROWSER PASSKEY PROMPT ---
+        // This is where the browser takes over (FaceID, TouchID, Hello, etc.)
+        const credential = await navigator.credentials.get({
+            publicKey: assertionOptions,
+            signal: abortController.newSignal(),
+            mediation: 'optional' // 'conditional' is for autofill, 'optional' triggers modal immediately
+        });
+
+        // If 'get' resolves to null (rare, but possible in some flows), treat as cancellation
+        if (!credential) {
+            throw new DOMException("The operation was aborted.", "AbortError");
+        }
+
+        const attResponse = credential.toJSON();
+
+        // --- STEP 3: VERIFY SIGNATURE (Send to Server) ---
+        const verifyRes = await fetch('/automagic', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-XSRF-TOKEN': getCsrfToken()
+            },
+            body: JSON.stringify(attResponse)
+        });
+
+        if (!verifyRes.ok) {
+            throw new exceptionHandler.HttpError(verifyRes.status, "Verification failed.");
+        }
+
+        const verifyData = await verifyRes.json();
+
+        if (!verifyData.authenticated) { 
+             throw new Error("Authentication rejected by server.");
+        }
+
+        // --- SUCCESS ---
+        exceptionHandler.setInfoSpan("Access granted! Redirecting...", "success");
+        setTimeout(() => window.location.href = '/files', 1500);
+
+    } catch (error) {
+        // Delegate to our specialized error handler
+        exceptionHandler.handlePasskeyError(error);
+    } finally {
+        exceptionHandler.setLoading(false);
+    }
 }
 
 async function login(email, headers) {
@@ -290,20 +335,36 @@ async function login(email, headers) {
 
     const assertionResponse = await navigator.credentials.get(credentialOptions);
 
-    const credentialRecord = await webauthnService.login('/login', headers, assertionResponse);
+    let credentialRecord = null;
+
+    try {
+        credentialRecord = await webauthnService.login('/login', headers, assertionResponse);
+    } catch (error) {
+        console.error(error);
+        if (error.name === 'NotAllowedError') {
+            exceptionHandler.setInfoSpan("Setup cancelled. Try again when ready.", "warning");
+        } else if (error.name === 'AbortError') {
+            exceptionHandler.setInfoSpan("The operation was aborted. Try again.", "error");
+        } else {
+            exceptionHandler.setInfoSpan(error.message || "An unexpected error occurred.", "error");
+        }
+    } finally {
+        exceptionHandler.setLoading(false);
+    }
+
 
     console.log(credentialRecord);
 
     if (!credentialRecord.ok) {
-        setInfoSpan(credentialRecord.statusText || "An unexpected error occurred.", 'error');
+        exceptionHandler.setInfoSpan(credentialRecord.statusText || "An unexpected error occurred.", 'error');
         return;
     }
 
-    setInfoSpan("Loged in successfully! Redirecting...", "success");
-    setTimeout(() => window.location.href = '/dashboard', 2500);
+    exceptionHandler.setInfoSpan("Loged in successfully! Redirecting...", "success");
+    setTimeout(() => window.location.href = '/files', 2500);
 
 }
 
-ui.emailInput.addEventListener('input', () => {
-    ui.submitBtn.disabled = !ui.emailInput.checkValidity() && hasPrf;
+exceptionHandler.ui.emailInput.addEventListener('input', () => {
+    exceptionHandler.ui.submitBtn.disabled = !exceptionHandler.ui.emailInput.checkValidity();
 });
