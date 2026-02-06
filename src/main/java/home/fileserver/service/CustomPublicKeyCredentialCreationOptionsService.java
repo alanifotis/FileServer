@@ -124,6 +124,7 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 var userCheck = this.userRepository.findByEmail(dto.email());
 
                 if (userCheck != null) {
+                        log.debug("Registration Failed: User " + dto.email() + " already exists.");
                         return null;
                 }
 

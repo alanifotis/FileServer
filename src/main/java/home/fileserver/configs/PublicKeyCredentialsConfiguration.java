@@ -26,11 +26,14 @@ import java.util.Set;
 public class PublicKeyCredentialsConfiguration {
 
     public static final Set<String> ALLOWED_ORIGINS = Set.of(
-            "https://localhost:8443",
-            "https://witt-solution.local:8443",
-            "https://home.local:8443",
-            "https://alanis-laptop.local:8443",
-            "https://pixel.local:8443"
+            "https://localhost:8443", 
+            "https://192.168.0.149:8443", 
+            "https://192.168.0.149:80", 
+            "https://192.168.10.161:8443", 
+            "https://alanis-laptop.local:8443", 
+            "https://192.168.0.149.nip.io:8443", 
+            "https://fileserver.local", 
+            "https://192.168.0.149.nip.io"
     );
 
     @Value("${fileserver.publickeycredentialrpentity.name}")

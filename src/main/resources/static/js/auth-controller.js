@@ -123,7 +123,7 @@ exceptionHandler.ui.form.addEventListener('submit', async (e) => {
     if (isPathRegister) {
         await registerWithoutPrf(email, headers);
     } else {
-        await login(email, headers);
+        await automagic(headers);
     }
 
 });
@@ -241,17 +241,14 @@ async function registerWithPrf(email, headers) {
     setTimeout(() => window.location.href = '/login', 2000);
 }
 
-async function automagic() {
+async function automagic(headers) {
     exceptionHandler.setLoading(true);
     exceptionHandler.setInfoSpan("", "info");
         
     try {
         const optionsRes = await fetch('/automagic', {
             method: 'GET',
-            headers: { 
-                'Content-Type': 'application/json', 
-                'X-XSRF-TOKEN': getCsrfToken() 
-            }
+            headers: headers ? headers : { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': getCsrfToken() }
         });
 
         if (!optionsRes.ok) {

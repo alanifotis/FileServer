@@ -89,7 +89,6 @@ public class RegisterController {
     }
 
     @PostMapping("/register")
-    // @ResponseStatus(code = HttpStatus.CREATED, reason = "User exists.")
     public ResponseEntity<CredentialRecord> registerWithPrf(
             HttpServletRequest request,
             HttpServletResponse response,
