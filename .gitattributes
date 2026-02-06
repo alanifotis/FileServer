@@ -1,16 +1,23 @@
-# 1. Default behavior for all files
-# Detect text files and normalize them (LF in repo, Native on OS)
+# --- Global Default ---
+# Treat everything as text and convert to native OS line endings by default
 * text=auto
 
-# 2. Force Bash scripts to ALWAYS keep Linux line endings (LF)
-# This prevents Windows from converting them to CRLF and breaking the script
+# --- Binary Files ---
+# Tell Git to treat these as binary (no line ending conversion, no text diffs)
+*.jar binary
+*.p12 binary
+*.pem binary
+*.key binary
+
+# --- Linux/Unix Scripts (Force LF) ---
+# Critical for shell scripts to work on Linux/Docker/WSL
 *.sh text eol=lf
 mvnw text eol=lf
+gradlew text eol=lf
 
-# 3. Force Windows batch scripts to ALWAYS use Windows line endings (CRLF)
+# --- Windows Scripts (Force CRLF) ---
+# Critical for batch files to work on Windows cmd
 *.cmd text eol=crlf
 *.bat text eol=crlf
-
-/gradlew text eol=lf
-*.bat text eol=crlf
-*.jar binary
+mvnw.cmd text eol=crlf
+gradlew.bat text eol=crlf
