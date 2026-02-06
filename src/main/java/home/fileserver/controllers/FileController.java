@@ -1,5 +1,6 @@
 package home.fileserver.controllers;
 
+import org.jspecify.annotations.Nullable;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -10,6 +11,7 @@ import home.fileserver.dto.BlobUploadResult;
 import home.fileserver.dto.DirectoryDto;
 import home.fileserver.dto.FileItem;
 import home.fileserver.dto.FileUploadRequest;
+import home.fileserver.dto.files.FolderViewDto;
 import home.fileserver.models.FileMetadata;
 import home.fileserver.models.User;
 import home.fileserver.repositories.AppUserRepository;
@@ -165,6 +167,23 @@ public class FileController {
             @PathVariable Long id) {
         metadataService.hardDelete(id, user);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/ls")
+    public ResponseEntity<FolderViewDto> listDirectory(
+         @AuthenticationPrincipal User currentUser,
+         @Nullable @RequestBody Map<String, String> payload) {
+
+
+        Long folderId = ( payload.get("folderId") == null || payload.get("folderId").isBlank() ) ? null : Long.valueOf(payload.get("folderId"));
+
+        FolderViewDto response = this.metadataService.listDirectory(currentUser.getId(), folderId);
+
+        if (response == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        return ResponseEntity.ok(response);
     }
 
 }

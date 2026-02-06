@@ -50,31 +50,25 @@
 
         <section class="browser-window">
             <div class="browser-header">
-                <div class="breadcrumb">
-                    <span class="root">My Drive</span>
-                    <span class="separator">/</span>
-                    <span class="current">Uploads</span>
-                </div>
+                <ul id="breadcrumbs" class="breadcrumb">
+                    </ul>
             </div>
 
             <div class="file-list-header">
                 <span class="col-name">Name</span>
-                <span class="col-status">Status</span>
-                <span class="col-size">Size</span>
+                <span class="col-date">Date Modified</span> <span class="col-size">Size</span>
             </div>
 
             <div class="scroll-viewport">
                 <ul id="file-list" class="file-list">
                     <li class="empty-state">
-                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="#cbd5e1" stroke-width="1.5"><path d="M13 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V9z"/><polyline points="13 2 13 9 20 9"/></svg>
-                        <p>No files uploaded yet</p>
+                        <div class="spinner"></div> <p>Loading files...</p>
                     </li>
                 </ul>
             </div>
         </section>
 
     </main>
-
 
     <div id="upload-widget" class="upload-widget hidden">
         <div class="widget-header" id="widget-header">
@@ -89,8 +83,7 @@
             </div>
         </div>
         
-        <div id="widget-body" class="widget-body">
-            </div>
+        <div id="widget-body" class="widget-body"></div>
     </div>
 
     <script type="module" src="/js/files.js"></script>

@@ -300,7 +300,7 @@ async function automagic() {
 
         // --- SUCCESS ---
         exceptionHandler.setInfoSpan("Access granted! Redirecting...", "success");
-        setTimeout(() => window.location.href = '/files', 1500);
+        setTimeout(() => window.location.href = '/', 1500);
 
     } catch (error) {
         // Delegate to our specialized error handler

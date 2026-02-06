@@ -1,3 +1,16 @@
+# 1. Default behavior for all files
+# Detect text files and normalize them (LF in repo, Native on OS)
+* text=auto
+
+# 2. Force Bash scripts to ALWAYS keep Linux line endings (LF)
+# This prevents Windows from converting them to CRLF and breaking the script
+*.sh text eol=lf
+mvnw text eol=lf
+
+# 3. Force Windows batch scripts to ALWAYS use Windows line endings (CRLF)
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
 /gradlew text eol=lf
 *.bat text eol=crlf
 *.jar binary

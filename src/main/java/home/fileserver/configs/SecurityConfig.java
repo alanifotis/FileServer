@@ -31,7 +31,6 @@ import tools.jackson.databind.json.JsonMapper;
 class SecurityConfiguration {
 
         private static final String[] ALLOWED_PATHS = {
-                        "/",
                         "/automagic",
                         "/auth.html",
                         "/favicon/files.png",

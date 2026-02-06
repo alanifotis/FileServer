@@ -6,6 +6,7 @@
 
 GREEN='\033[1;32m' #(1->bold, 31->color code for green)
 RED='\033[1;31m' #(1->bold, 31->color code for red)
+YELLOW='\033[1;33m' #(1->bold, 31->color code for yellow)
 NC='\033[0m' # Reset terminal colors
 
 # --- Safety & Formatting ---
@@ -24,6 +25,14 @@ umask 077
 function log {
     echo -e "${GREEN}>> $1${NC}"
 }
+
+function warn {
+    echo -e "${YELLOW}>> $1${NC}"
+}
+
+# --- PATH CORRECTION Fix ---
+# Get the directory where the script is actually stored
+SCRIPT_DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 
 # --- Important Configurations ---
 DOMAIN="localhost"
@@ -46,6 +55,7 @@ DNS_LIST=(
   "home.local"
   "pixel.local"
   "192.168.0.149.nip.io"
+  "fileserver.local"
 )
 
 # Network Configuration (Add your IPs here)
@@ -57,25 +67,32 @@ IP_LIST=(
   "::1"
 )
 
-# Filenames
-CA_KEY="ca.key"
-CA_PEM="ca.pem"
-SERVER_KEY="server.key"
-SERVER_CSR="server.csr"
-SERVER_PEM="server.pem"
-SERVER_P12="server.p12"
+# Filenames using Absolute Paths
+# We force the files to always be read/written in the script's folder
+CA_KEY="$SCRIPT_DIR/ca.key"
+CA_PEM="$SCRIPT_DIR/ca.pem"
+SERVER_KEY="$SCRIPT_DIR/server.key"
+SERVER_CSR="$SCRIPT_DIR/server.csr"
+SERVER_PEM="$SCRIPT_DIR/server.pem"
+SERVER_P12="$SCRIPT_DIR/server.p12"
 
 # Config Files (Temporary)
-CA_CONF="ca.cfg"
-SERVER_CONF="server.cfg"
+CA_CONF="$SCRIPT_DIR/ca.cfg"
+SERVER_CONF="$SCRIPT_DIR/server.cfg"
 
 # --- Script Start ---
 
-log "1. Generating Certificate Authority Key (ECDSA P-256)..."
-openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 -out "$CA_KEY"
+# 1. CA Generation Logic (REUSE if exists)
+if [[ -f "$CA_KEY" && -f "$CA_PEM" ]]; then
+    warn "Existing CA Key and Certificate found."
+    warn "Skipping CA generation to maintain trust relationship."
+    echo "Using existing CA: $CA_PEM"
+else
+    log "1. Generating NEW Certificate Authority Key (ECDSA P-256)..."
+    openssl genpkey -algorithm EC -pkeyopt ec_paramgen_curve:prime256v1 -out "$CA_KEY"
 
-log "2. Creating CA Config..."
-cat > "$CA_CONF" <<EOF
+    log "2. Creating CA Config..."
+    cat > "$CA_CONF" <<EOF
 [req]
 distinguished_name = req_distinguished_name
 x509_extensions    = v3_ca
@@ -96,8 +113,11 @@ basicConstraints       = critical, CA:TRUE
 keyUsage               = critical, digitalSignature, cRLSign, keyCertSign
 EOF
 
-log "3. Generating CA PEM Certificate..."
-openssl req -x509 -new -key "$CA_KEY" -out "$CA_PEM" -config "$CA_CONF" -days 3650
+    log "3. Generating CA PEM Certificate..."
+    openssl req -x509 -new -key "$CA_KEY" -out "$CA_PEM" -config "$CA_CONF" -days 3650
+    
+    warn "A NEW Root CA was generated. You MUST import '$CA_PEM' into your Trust Store."
+fi
 
 log "4. Creating Server Config..."
 # Build the DNS and IP SAN string dynamically
@@ -160,7 +180,7 @@ log "6. Generating Server CSR..."
 openssl req -new -key "$SERVER_KEY" -out "$SERVER_CSR" -config "$SERVER_CONF"
 
 log "7. Signing Server Certificate with CA..."
-# Fix: Removed the accidental space in CAkey argument
+
 openssl x509 -req -in "$SERVER_CSR" \
     -CA "$CA_PEM" \
     -CAkey "$CA_KEY" \
@@ -171,6 +191,9 @@ openssl x509 -req -in "$SERVER_CSR" \
     -extensions server_cert
 
 log "8. Packaging for Spring Boot (PKCS#12)..."
+
+if [ -f "$SERVER_P12" ]; then rm -f "$SERVER_P12"; fi
+
 openssl pkcs12 -export -in "$SERVER_PEM" \
     -inkey "$SERVER_KEY" \
     -out "$SERVER_P12" \
@@ -180,17 +203,30 @@ openssl pkcs12 -export -in "$SERVER_PEM" \
 log "9. verifying the certificate chain..."
 openssl verify -CAfile "$CA_PEM" "$SERVER_PEM"
 
-log "10. Cleaning up intermediate files..."
-rm "$CA_CONF" "$SERVER_CONF" "$SERVER_CSR" "$CA_PEM.srl" 2>/dev/null || true
+
 
 echo "--------------------------------------------------------"
 echo -e "${GREEN}Success!${NC}"
-echo "CA Certificate:     $CA_PEM (Import this to your OS/Browser Trust Store)"
+if [[ -f "$CA_CONF" ]]; then
+    echo -e "${RED}IMPORTANT: A NEW CA was generated.${NC}"
+    echo "CA Certificate:     $CA_PEM "
+    echo "You MUST import '$CA_PEM' into your Import this to your OS / Browser Trust Store again."
+else
+    echo -e "${GREEN}Used existing CA.${NC}" 
+    echo "No need to re-import '$CA_PEM' if it is already in your trust store."
+fi
+
 echo "Server Certificate: $SERVER_P12 (Use this in Spring Boot)"
 echo "--------------------------------------------------------"
 
-echo -e "${GREEN}Copying new Certificate to the cert PATH.${NC}"
-cp "$CA_PEM" ../certs/
+echo -e "${GREEN}Copying new Certificate to the certificate download PATH.${NC}"
+mkdir -p "$SCRIPT_DIR/../certs"
+cp "$CA_PEM" "$SCRIPT_DIR/../certs/"
 
 # Reminder to not push private keys to Git
 echo -e "${RED}IMPORTANT: Add *.key, *.pem, and *.p12 to your .gitignore!${NC}"
+echo "--------------------------------------------------------"
+
+
+log "10. Cleaning up intermediate files..."
+rm -f "$CA_CONF" "$SERVER_CONF" "$SERVER_CSR" "$CA_PEM.srl" 2>/dev/null || true

@@ -33,6 +33,7 @@ async function post(url, headers, body, method = "POST", credentials = false) {
     options.credentials = 'include';
   }
 
+  console.log(options);
 
   return fetch(url, options);
 }

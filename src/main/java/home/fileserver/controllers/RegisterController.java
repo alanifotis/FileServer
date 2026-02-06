@@ -39,6 +39,8 @@ public class RegisterController {
         return this.getAuthhtml();
     }
 
+
+
      @GetMapping("/login")
     public String loginPage() {
         return this.getAuthhtml();

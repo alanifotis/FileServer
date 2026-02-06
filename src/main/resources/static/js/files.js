@@ -1,370 +1,24 @@
 'use strict';
 
 import createPolicy from './utils/policy-creator.js';
+import FileExplorer from './file-utils/FileExplorer.js';
+import Utils from './file-utils/Utils.js';
 
 createPolicy();
 
-// // --- CONFIGURATION ---
-// const CONFIG = {
-//     CHUNK_SIZE: 5 * 1024 * 1024,
-//     MAX_PARALLEL_UPLOADS: 3,
-//     MAX_RETRIES: 5,
-//     RETRY_DELAY: 2000,
-//     ENDPOINTS: {
-//         UPLOAD: '/api/files',
-//         CREATE_FOLDER: '/api/files/folder'
-//     }
-// };
-
-// // --- HELPERS ---
-// const Utils = {
-//     getCsrfToken: () => document.cookie.replace(/(?:(?:^|.*;\s*)XSRF-TOKEN\s*\=\s*([^;]*).*$)|^.*$/, '$1'),
-    
-//     getCurrentFolderId: () => {
-//         const path = window.location.pathname;
-//         const segments = path.split('/').filter(Boolean);
-//         // Assuming URL is /drive/folder/123. If root, return null.
-//         const id = parseInt(segments.pop()); 
-//         return isNaN(id) ? null : id;
-//     },
-
-//     formatBytes: (bytes, decimals = 2) => {
-//         if (!+bytes) return '0 Bytes';
-//         const k = 1024;
-//         const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-//         const i = Math.floor(Math.log(bytes) / Math.log(k));
-//         return `${parseFloat((bytes / Math.pow(k, i)).toFixed(decimals))} ${sizes[i]}`;
-//     },
-
-//     generateUUID: () => {
-//         if (typeof crypto !== 'undefined' && crypto.randomUUID) {
-//             return crypto.randomUUID();
-//         }
-//         return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
-//             const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
-//             return v.toString(16);
-//         });
-//     }
-// };
-
-
-// class FileUploader {
-//     constructor(file, parentId, callbacks) {
-//         this.file = file;
-//         this.parentId = parentId;
-//         this.totalChunks = Math.ceil(file.size / CONFIG.CHUNK_SIZE);
-//         this.uploadId = Utils.generateUUID();
-//         this.abortController = new AbortController();
-//         this.isAborted = false;
-//         this.callbacks = callbacks || {};
-//     }
-
-//     async start() {
-//         try {
-//             console.log(`🚀 Starting: ${this.file.name} | ${this.totalChunks} chunks`);
-            
-//             // Chunk Loop
-//             for (let i = 0; i < this.totalChunks; i++) {
-//                 if (this.isAborted) throw new Error("Upload Cancelled");
-//                 await this._uploadChunk(i);
-//             }
-
-//             // Finish
-//             if (this.callbacks.onSuccess) this.callbacks.onSuccess(this.file);
-            
-//         } catch (error) {
-//             if (this.isAborted) {
-//                 console.warn(`🛑 Cancelled: ${this.file.name}`);
-//             } else {
-//                 console.error(`❌ Failed: ${this.file.name}`, error);
-//                 if (this.callbacks.onError) this.callbacks.onError(error, this.file);
-//             }
-//         }
-//     }
-
-//     abort() {
-//         this.isAborted = true;
-//         this.abortController.abort();
-//     }
-
-//     async _uploadChunk(chunkIndex) {
-//         const start = chunkIndex * CONFIG.CHUNK_SIZE;
-//         const end = Math.min(start + CONFIG.CHUNK_SIZE, this.file.size);
-//         const chunkBlob = this.file.slice(start, end);
-
-//         const formData = new FormData();
-//         formData.append("file", chunkBlob, this.file.name); 
-//         formData.append("chunkIndex", chunkIndex);
-//         formData.append("totalChunks", this.totalChunks);
-        
-//         if (this.parentId) formData.append("parentId", this.parentId);
-        
-//         if (this.uploadId) formData.append("uploadId", this.uploadId);
-
-//         let attempt = 0;
-        
-//         while (attempt < CONFIG.MAX_RETRIES) {
-//             try {
-//                 if (this.isAborted) return;
-                
-//                 const response = await this._sendXhr(formData, chunkIndex);
-                
-//                 // Capture the server-generated UUID from the partial response
-//                 if (response.status === 'partial' && response.uploadId) {
-//                     this.uploadId = response.uploadId;
-//                 }
-                
-//                 return; // Chunk success
-//             } catch (err) {
-//                 attempt++;
-//                 if (this.isAborted) throw new Error("Cancelled");
-//                 if (attempt >= CONFIG.MAX_RETRIES) throw err;
-                
-//                 console.warn(`⚠️ Retrying chunk ${chunkIndex} (${attempt}/${CONFIG.MAX_RETRIES})...`);
-//                 await new Promise(r => setTimeout(r, CONFIG.RETRY_DELAY * attempt)); 
-//             }
-//         }
-//     }
-
-//     _sendXhr(formData, chunkIndex) {
-//         return new Promise((resolve, reject) => {
-//             const xhr = new XMLHttpRequest();
-//             xhr.open('POST', CONFIG.ENDPOINTS.UPLOAD);
-//             xhr.setRequestHeader('X-XSRF-TOKEN', Utils.getCsrfToken());
-
-//             // ⚡ Progress Calculation
-//             xhr.upload.onprogress = (e) => {
-//                 if (e.lengthComputable && this.callbacks.onProgress) {
-//                     // Global Progress = (Completed Chunks * ChunkSize) + Current Chunk Loaded Bytes
-//                     const uploadedBytes = (chunkIndex * CONFIG.CHUNK_SIZE) + e.loaded;
-//                     const totalPercent = Math.min(100, (uploadedBytes / this.file.size) * 100);
-//                     this.callbacks.onProgress(totalPercent, this.file);
-//                 }
-//             };
-
-//             this.abortController.signal.addEventListener('abort', () => xhr.abort());
-
-//             xhr.onload = () => {
-//                 if (xhr.status >= 200 && xhr.status < 300) {
-//                     try {
-//                         resolve(JSON.parse(xhr.responseText));
-//                     } catch (e) {
-//                         reject(new Error("Invalid JSON response from server"));
-//                     }
-//                 } else {
-//                     reject(new Error(`HTTP ${xhr.status} - ${xhr.statusText}`));
-//                 }
-//             };
-
-//             xhr.onerror = () => reject(new Error("Network connection lost"));
-//             xhr.onabort = () => reject(new Error("Aborted"));
-
-//             xhr.send(formData);
-//         });
-//     }
-// }
-
-// /**
-//  * --------------------------------------------------------------------------
-//  * CLASS: UploadQueue
-//  * The Orchestrator. Prevents browser freeze on bulk drops.
-//  * --------------------------------------------------------------------------
-//  */
-// const UploadQueue = {
-//     queue: [],
-//     activeUploads: 0,
-//     activeInstances: {}, 
-
-//     add(file, parentId) {
-//         UI.createProgressBar(file);
-//         this.queue.push({ file, parentId });
-//         this.process();
-//     },
-
-//     async process() {
-//         if (this.activeUploads >= CONFIG.MAX_PARALLEL_UPLOADS || this.queue.length === 0) {
-//             return;
-//         }
-
-//         const task = this.queue.shift();
-//         this.activeUploads++;
-
-//         const callbacks = {
-//             onProgress: (percent) => UI.updateProgress(task.file, percent),
-//             onSuccess: () => {
-//                 UI.markSuccess(task.file);
-//                 this.finalizeTask(task.file.name);
-//             },
-//             onError: (err) => {
-//                 UI.markError(task.file, err);
-//                 this.finalizeTask(task.file.name);
-//             }
-//         };
-
-//         const uploader = new FileUploader(task.file, task.parentId, callbacks);
-//         this.activeInstances[task.file.name] = uploader;
-
-//         // Fire and forget (don't await, let parallelism work)
-//         uploader.start().catch(console.error);
-        
-//         // Try to start another one immediately
-//         this.process(); 
-//     },
-
-//     finalizeTask(fileName) {
-//         delete this.activeInstances[fileName];
-//         this.activeUploads--;
-//         this.process();
-//     },
-
-//     cancelAll() {
-//         Object.values(this.activeInstances).forEach(u => u.abort());
-//         this.queue = [];
-//         this.activeUploads = 0;
-//     }
-// };
-
-// // --- DIRECTORY SCANNER ---
-// async function traverseFileTree(entry, parentId) {
-//     if (entry.isFile) {
-//         const file = await new Promise((resolve, reject) => entry.file(resolve, reject));
-//         UploadQueue.add(file, parentId);
-//     } 
-//     else if (entry.isDirectory) {
-//         try {
-//             const newFolderId = await createFolder(entry.name, parentId);
-//             const dirReader = entry.createReader();
-//             const entries = await readAllEntries(dirReader);
-//             for (const child of entries) {
-//                 await traverseFileTree(child, newFolderId);
-//             }
-//         } catch (err) {
-//             console.error(`Skipping folder ${entry.name}:`, err);
-//         }
-//     }
-// }
-
-// async function createFolder(name, parentId) {
-//     const formData = new FormData();
-//     formData.append("folderName", name);
-//     if (parentId) formData.append("parentId", parentId);
-
-//     const res = await fetch(CONFIG.ENDPOINTS.CREATE_FOLDER, {
-//         method: 'POST',
-//         headers: { 'X-XSRF-TOKEN': Utils.getCsrfToken() },
-//         body: formData
-//     });
-//     if (!res.ok) throw new Error("Folder creation failed");
-//     const data = await res.json();
-//     return data.id;
-// }
-
-// function readAllEntries(dirReader) {
-//     return new Promise((resolve, reject) => {
-//         let entries = [];
-//         const read = () => {
-//             dirReader.readEntries(result => {
-//                 if (result.length === 0) resolve(entries);
-//                 else {
-//                     entries = entries.concat(result);
-//                     read(); // Chrome recursion
-//                 }
-//             }, reject);
-//         };
-//         read();
-//     });
-// }
-
-// // --- UI HANDLERS (Customize this) ---
-// const UI = {
-//     createProgressBar: (file) => {
-//         // e.g., create a DOM element
-//         console.log(`[UI] Queued: ${file.name}`);
-//     },
-//     updateProgress: (file, percent) => {
-//         // e.g., update width of bar
-//         // console.log(`[UI] ${file.name}: ${percent.toFixed(0)}%`);
-//     },
-//     markSuccess: (file) => {
-//         console.log(`[UI] ✅ ${file.name}`);
-//         // Refresh file list in UI?
-//     },
-//     markError: (file, err) => {
-//         console.error(`[UI] ❌ ${file.name}`, err);
-//     }
-// };
-
-// // --- INIT ---
-// document.addEventListener("DOMContentLoaded", () => {
-//     const dropZone = document.getElementById('drop-zone');
-//     const currentFolderId = Utils.getCurrentFolderId();
-
-//     dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('active'); });
-//     dropZone.addEventListener('dragleave', () => dropZone.classList.remove('active'));
-
-//     dropZone.addEventListener('drop', async (e) => {
-//         e.preventDefault();
-//         dropZone.classList.remove('active');
-        
-//         const items = e.dataTransfer.items;
-//         if (!items) return;
-
-//         const entries = [];
-//         for (let i = 0; i < items.length; i++) {
-//             if (items[i].webkitGetAsEntry) {
-//                 const entry = items[i].webkitGetAsEntry();
-//                 if (entry) entries.push(entry);
-//             }
-//         }
-
-//         if (entries.length > 0) {
-//             for (const entry of entries) {
-//                 await traverseFileTree(entry, currentFolderId);
-//             }
-//         } else {
-//             // Fallback
-//             for (const file of e.dataTransfer.files) {
-//                 UploadQueue.add(file, currentFolderId);
-//             }
-//         }
-//     });
-// });
-
-// --- CONFIGURATION ---
 const CONFIG = {
     CHUNK_SIZE: 5 * 1024 * 1024, // 5MB
     MAX_PARALLEL_UPLOADS: 3,
     MAX_RETRIES: 5,
     RETRY_DELAY: 2000,
-    ENDPOINTS: { 
+    ENDPOINTS: {
         UPLOAD: '/api/files',
         CREATE_FOLDER: '/api/files/folder'
     }
 };
 
 // --- HELPERS ---
-const Utils = {
-    getCsrfToken: () => {
-        const match = document.cookie.match(/(?:^|;\s*)XSRF-TOKEN\s*=\s*([^;]+)/);
-        return match ? match[1] : null;
-    },
-    getCurrentFolderId: () => {
-        const parts = window.location.pathname.split('/');
-        const id = parseInt(parts.pop());
-        return isNaN(id) ? null : id;
-    },
-    formatBytes: (bytes) => {
-        if (!+bytes) return '0 B';
-        const k = 1024;
-        const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${['B', 'KB', 'MB', 'GB'][i]}`;
-    },
-    // Creates a safe DOM ID from a string path (for folder nesting)
-    safeDomId: (str) => 'node-' + btoa(unescape(encodeURIComponent(str))).replace(/[^a-zA-Z0-9]/g, ''),
-    
-    // Unique ID for file uploads (Widget tracking)
-    uploadId: (file) => 'u-' + file.name.replace(/[^a-zA-Z0-9]/g, '') + '-' + file.size
-};
+
 
 /**
  * --------------------------------------------------------------------------
@@ -373,7 +27,7 @@ const Utils = {
  * --------------------------------------------------------------------------
  */
 const FolderManager = {
-    cache: {}, 
+    cache: {},
 
     async ensureFolderExists(name, parentId) {
         // Create a unique key for cache: "123/FolderName" or "root/FolderName"
@@ -390,11 +44,11 @@ const FolderManager = {
                 headers: { 'X-XSRF-TOKEN': Utils.getCsrfToken() },
                 body: formData
             });
-            
+
             if (!res.ok) throw new Error(`Failed to create folder: ${name}`);
             const data = await res.json();
-            
-            this.cache[key] = data.id; 
+
+            this.cache[key] = data.id;
             return data.id;
         } catch (err) {
             console.error(err);
@@ -405,21 +59,21 @@ const FolderManager = {
     // For Input Directory: Resolves "A/B/C" path to the final Backend ID
     async resolvePathToId(relativePath, rootId) {
         if (!relativePath) return rootId;
-        
+
         const folders = relativePath.split('/');
         // If the path includes the filename at the end, pop it. 
         // (webkitRelativePath usually is "Folder/File.txt")
         // We assume the caller passes ONLY the folder path part if possible, 
         // but let's be safe: logic depends on how you parse it.
         // Here we assume 'relativePath' is JUST folders: "Photos/Summer"
-        
+
         let currentParentId = rootId;
-        
+
         for (const name of folders) {
             if (!name) continue;
             currentParentId = await this.ensureFolderExists(name, currentParentId);
         }
-        
+
         return currentParentId;
     }
 };
@@ -448,7 +102,7 @@ const BrowserTree = {
 
             for (const folderName of folders) {
                 if (!folderName) continue;
-                
+
                 // Build cumulative path for ID: "Photos", then "Photos/Summer"
                 currentPathStr = currentPathStr ? `${currentPathStr}/${folderName}` : folderName;
                 const folderId = Utils.safeDomId(currentPathStr);
@@ -459,8 +113,8 @@ const BrowserTree = {
                     // Create the Folder Row
                     folderLi = document.createElement('li');
                     folderLi.id = folderId;
-                    folderLi.className = 'is-folder'; 
-                    
+                    folderLi.className = 'is-folder';
+
                     // Folder HTML (CSP Safe - Class based)
                     folderLi.innerHTML = `
                         <div class="tree-row">
@@ -475,7 +129,7 @@ const BrowserTree = {
                     `;
                     parentContainer.appendChild(folderLi);
                 }
-                
+
                 // Step deeper into this folder's UL
                 parentContainer = folderLi.querySelector('.tree-children');
             }
@@ -484,7 +138,7 @@ const BrowserTree = {
         // 2. ADD FILE ROW
         const li = document.createElement('li');
         li.className = 'tree-item'; // CSS handles indentation via padding in .tree-item or .tree-children
-        
+
         li.innerHTML = `
             <div class="tree-row">
                 <span class="col-icon">
@@ -495,7 +149,7 @@ const BrowserTree = {
                 <span class="col-size">${Utils.formatBytes(file.size)}</span>
             </div>
         `;
-        
+
         // Add to the determined container (Root or specific Subfolder)
         parentContainer.appendChild(li);
     }
@@ -513,19 +167,19 @@ const UploadWidget = {
     title: document.getElementById('widget-title'),
     toggleBtn: document.getElementById('widget-toggle-btn'),
     closeBtn: document.getElementById('widget-close-btn'),
-    
+
     totalItems: 0,
     completedItems: 0,
     isMinimized: false,
 
     init() {
         this.header.addEventListener('click', (e) => {
-            if (e.target.closest('button')) return; 
+            if (e.target.closest('button')) return;
             this.toggleMinimize();
         });
-        
+
         this.toggleBtn.addEventListener('click', () => this.toggleMinimize());
-        
+
         this.closeBtn.addEventListener('click', () => {
             this.el.classList.add('hidden');
             this.body.innerHTML = '';
@@ -538,10 +192,10 @@ const UploadWidget = {
     toggleMinimize() {
         this.isMinimized = !this.isMinimized;
         this.el.classList.toggle('minimized', this.isMinimized);
-        
+
         const svg = this.toggleBtn.querySelector('svg');
         if (svg) {
-            svg.classList.add('widget-toggle-icon'); 
+            svg.classList.add('widget-toggle-icon');
             this.isMinimized ? svg.classList.add('rotate-180') : svg.classList.remove('rotate-180');
         }
     },
@@ -557,7 +211,7 @@ const UploadWidget = {
         this.show();
 
         const id = Utils.uploadId(file);
-        
+
         const row = document.createElement('div');
         row.className = 'upload-row';
         row.id = id;
@@ -588,7 +242,7 @@ const UploadWidget = {
         const cancelBtn = row.querySelector('.cancel-btn');
         cancelBtn.addEventListener('click', () => {
             row.classList.add('error');
-            onCancel(); 
+            onCancel();
             this.updateStatus(file, 'cancelled');
         });
     },
@@ -615,8 +269,8 @@ const UploadWidget = {
     updateTitle() {
         if (this.completedItems === this.totalItems && this.totalItems > 0) {
             this.title.textContent = "Uploads complete";
-            setTimeout(() => { 
-                if(!this.isMinimized && this.completedItems === this.totalItems) this.toggleMinimize(); 
+            setTimeout(() => {
+                if (!this.isMinimized && this.completedItems === this.totalItems) this.toggleMinimize();
             }, 3000);
         } else {
             this.title.textContent = `Uploading ${this.completedItems} of ${this.totalItems} items`;
@@ -698,7 +352,7 @@ class FileUploader {
             };
 
             this.abortController.signal.addEventListener('abort', () => xhr.abort());
-            
+
             xhr.onload = () => {
                 if (xhr.status >= 200 && xhr.status < 300) {
                     try { resolve(JSON.parse(xhr.responseText)); } catch { resolve({}); }
@@ -718,7 +372,7 @@ class FileUploader {
 const UploadQueue = {
     queue: [],
     activeUploads: 0,
-    activeInstances: {}, 
+    activeInstances: {},
 
     // displayPath is optional, used for Tree View visualization
     add(file, parentId, displayPath = '') {
@@ -739,10 +393,34 @@ const UploadQueue = {
                 this.activeUploads--;
                 delete this.activeInstances[task.file.name];
                 UploadWidget.updateStatus(task.file, 'success');
+
+                // 1. Get where the user is currently looking (Returns NULL for Root)
+                const currentViewId = Utils.getCurrentFolderId();
+
+                // 2. Normalize for comparison
+                const normalize = (val) => (val === null || val === undefined || val === 'null') ? 'root' : String(val);
+
+                const uploadKey = normalize(task.parentId);
+                const viewKey = normalize(currentViewId);
+
+                console.log(`[Upload Success] File: ${task.file.name} | Uploaded To: ${uploadKey} | Viewing: ${viewKey}`);
+
+                // 3. THE FIX: Handle the "Root ID" mismatch
+                // Check if keys match exactly OR if we are viewing root and uploaded to the known Root ID
+                const isExactMatch = uploadKey === viewKey;
                 
-                // ADD TO TREE VIEW HERE
-                BrowserTree.addFileNode(task.file, task.displayPath);
-                
+                // If we are at root view, but uploaded to a number, we assume it's the root ID
+                // (Optimistic refresh for root)
+                const isRootMismatch = viewKey === 'root' && uploadKey !== 'root';
+
+                if (isExactMatch || isRootMismatch) {
+                    console.log("✅ Refreshing view...");
+                    // Pass 'false' to keep history/URL intact
+                    FileExplorer.loadFolder(currentViewId, false);
+                } else {
+                    console.log("❌ IDs mismatch. Skipping refresh.");
+                }
+
                 this.process();
             },
             onError: (err) => {
@@ -788,19 +466,19 @@ async function traverseEntry(entry, parentId, currentPath = '') {
     if (entry.isFile) {
         const file = await new Promise((resolve) => entry.file(resolve));
         UploadQueue.add(file, parentId, currentPath);
-    } 
+    }
     else if (entry.isDirectory) {
         try {
             // 1. Create Folder in Backend
             const newFolderId = await FolderManager.ensureFolderExists(entry.name, parentId);
-            
+
             // 2. Update Visual Path
             const newPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
-            
+
             // 3. Read Children
             const dirReader = entry.createReader();
             const entries = await readAllEntries(dirReader);
-            
+
             for (const child of entries) {
                 await traverseEntry(child, newFolderId, newPath);
             }
@@ -829,7 +507,8 @@ function readAllEntries(dirReader) {
 // --- INITIALIZATION ---
 document.addEventListener("DOMContentLoaded", () => {
     UploadWidget.init();
-    
+    FileExplorer.init();
+
     const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
     const folderInput = document.getElementById('folder-input');
@@ -848,16 +527,19 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2. FILE INPUT (Simple)
     fileInput.addEventListener('change', (e) => {
+        const currentRootId = Utils.getCurrentFolderId();
         for (const file of e.target.files) {
-            UploadQueue.add(file, rootId, ''); // No subpath
+            UploadQueue.add(file, currentRootId, ''); // No subpath
         }
         fileInput.value = '';
     });
 
     // 3. FOLDER INPUT (webkitdirectory)
     folderInput.addEventListener('change', async (e) => {
+        const currentRootId = Utils.getCurrentFolderId()
+
         const files = Array.from(e.target.files);
-        
+
         // This process might be slow for thousands of files if done sequentially in foreground.
         // For production, consider moving path resolution to the UploadQueue logic asynchronously.
         for (const file of files) {
@@ -868,7 +550,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
             try {
                 // Ensure backend folders exist
-                const targetId = await FolderManager.resolvePathToId(folderPath, rootId);
+                const targetId = await FolderManager.resolvePathToId(folderPath, currentRootId);
                 UploadQueue.add(file, targetId, folderPath);
             } catch (err) {
                 console.error("Path resolution failed", err);
@@ -894,7 +576,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
     dropZone.addEventListener('drop', async (e) => {
         e.preventDefault();
-        
+        const currentRootId = Utils.getCurrentFolderId();
+
         const items = e.dataTransfer.items;
         if (!items) return;
 
@@ -908,12 +591,12 @@ document.addEventListener("DOMContentLoaded", () => {
 
         if (entries.length > 0) {
             for (const entry of entries) {
-                await traverseEntry(entry, rootId, '');
+                await traverseEntry(entry, currentRootId, '');
             }
         } else {
             // Fallback for simple file drag
             for (const file of e.dataTransfer.files) {
-                UploadQueue.add(file, rootId, '');
+                UploadQueue.add(file, currentRootId, '');
             }
         }
     });
