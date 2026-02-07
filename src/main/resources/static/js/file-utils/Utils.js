@@ -6,12 +6,18 @@ const Utils = {
         return match ? match[1] : null;
     },
     getCurrentFolderId: () => {
-        const match = window.location.pathname.match(/\/folders?\/(\d+)/);
-        
-        if (match && match[1]) {
-            return match[1];
+        const pathMatch = window.location.pathname.match(/\/folders?\/(\d+)/);
+        if (pathMatch && pathMatch[1]) {
+            return pathMatch[1];
         }
+
+        const params = new URLSearchParams(window.location.search);
+        const queryId = params.get('id');
         
+        if (queryId) {
+            return queryId;
+        }
+
         return null;
     },
     formatBytes: (bytes) => {

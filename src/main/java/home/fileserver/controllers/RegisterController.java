@@ -133,7 +133,7 @@ public class RegisterController {
         PublicKeyCredentialCreationOptions options = this.optionsService
                 .getPublicKeyCredentialCreationOptions(dto, request, response);
 
-        log.info("RpID: {}", options.getRp().getId());
+        log.info("RpID: {}, Email: {}", options.getRp().getId(), dto.email());
 
         return ResponseEntity.ok(options);
     }

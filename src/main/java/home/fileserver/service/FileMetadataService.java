@@ -2,11 +2,11 @@ package home.fileserver.service;
 
 import java.nio.file.Files;
 import java.time.Instant;
+import java.time.ZoneId;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -36,50 +36,53 @@ import lombok.extern.slf4j.Slf4j;
 @RequiredArgsConstructor
 public class FileMetadataService {
 
+    private static final DateTimeFormatter dateFormater = DateTimeFormatter.ISO_LOCAL_DATE
+            .withZone(ZoneId.systemDefault());
+
     private static final String PATH_TO_ROOT_QUERY = """
             WITH RECURSIVE ancestry AS (
-        SELECT m.id, m.original_filename, m.parent_id, 0 AS lvl
-        FROM file_metadata m 
-        WHERE m.id = :folderId
-        UNION ALL
-        SELECT f.id, f.original_filename, f.parent_id, a.lvl + 1
-        FROM file_metadata f 
-        INNER JOIN ancestry a ON f.id = a.parent_id
-    ) 
-    SELECT a.id, a.original_filename AS name 
-    FROM ancestry a
-    ORDER BY a.lvl DESC;
-        """;
+                SELECT m.id, m.original_filename, m.parent_id, 0 AS lvl
+                FROM file_metadata m
+                WHERE m.id = :folderId
+                UNION ALL
+                SELECT f.id, f.original_filename, f.parent_id, a.lvl + 1
+                FROM file_metadata f
+                INNER JOIN ancestry a ON f.id = a.parent_id
+            )
+            SELECT a.id, a.original_filename AS name
+            FROM ancestry a
+            ORDER BY a.lvl DESC;
+                """;
 
     private final LocalFileStorageService localFileStorageService;
-
     private final FileMetadataRepository metaRepo;
     private final FileBlobService blobService;
     private final JdbcClient jdbcClient;
     private final Snowflake snowflake = Snowflake.getInstance();
+    private final java.util.concurrent.ConcurrentMap<String, Object> folderLocks = new java.util.concurrent.ConcurrentHashMap<>();
 
-    @Transactional
     public FileMetadata saveDirectoryMetadata(User user, DirectoryDto dto) {
 
-        Optional<FileMetadata> existing = metaRepo.findByUserAndParentIdAndOriginalFilenameAndIsFolderTrue(
-                user, dto.parentId(), dto.folderName());
-        if (existing.isPresent()) {
-            return existing.get();
+        String lockKey = user.getId() + ":" + dto.parentId() + ":" + dto.folderName();
+        Object lock = folderLocks.computeIfAbsent(lockKey, k -> new Object());
+
+        synchronized (lock) {
+            try {
+
+                return metaRepo.findByUserAndParentIdAndOriginalFilenameAndIsFolderTrue(
+                        user, dto.parentId(), dto.folderName())
+                    .orElseGet(() -> {
+                        FileCategory category = dto.folderName().equalsIgnoreCase("Home") 
+                            ? FileCategory.HOME : FileCategory.FOLDER;
+                        
+                        return saveInternal(user, dto.parentId(), dto.folderName(), true, category, "inode/directory", null);
+                    });
+            } finally {
+                folderLocks.remove(lockKey, lock);
+            }
         }
-
-        FileCategory category = dto.folderName().equalsIgnoreCase("Home") ? FileCategory.HOME : FileCategory.FOLDER;
-
-        return saveInternal(
-                user,
-                dto.parentId(),
-                dto.folderName(),
-                true,
-                category,
-                "inode/directory",
-                null);
     }
 
-    @Transactional
     public FileMetadata saveFileMetadata(User user, FileBlob blob, String fileName, String contentType,
             @Nullable Long parentId) {
 
@@ -140,8 +143,19 @@ public class FileMetadataService {
         return this.metaRepo.save(entity);
     }
 
+    @Transactional
     private FileMetadata saveInternal(User user, Long parentId, String name, boolean isFolder, FileCategory category,
             String contentType, FileBlob blob) {
+
+        if (parentId != null && parentId.equals(user.getId())) {
+            parentId = null;
+        }
+        
+        // Debug
+        // if (parentId != null) {
+        //     log.info("Validating Subfolder. ParentID: {}, UserID: {}", parentId, user.getId());
+        // }
+
         validateParent(user, parentId);
 
         var meta = FileMetadata.builder()
@@ -181,9 +195,21 @@ public class FileMetadataService {
     }
 
     private void validateParent(User user, @Nullable Long parentId) {
-        if (parentId != null && !metaRepo.existsByIdAndUser(parentId, user)) {
-            throw new IllegalArgumentException("Parent folder not found or access denied");
+
+        if (parentId == null)
+            return;
+
+        if (parentId.equals(user.getId())) {
+            return;
         }
+
+        if (parentId != null && !this.metaRepo.existsByIdAndUser(parentId, user)) {
+            throw new IllegalArgumentException("Parent folder not found.");
+        }
+    }
+
+    public boolean validateOwnerShip(@Nullable Long parentId, Long userId) {
+        return metaRepo.existsByIdAndUserId(parentId, userId);
     }
 
     private boolean isCircularMove(Long sourceId, Long targetParentId) {
@@ -224,31 +250,38 @@ public class FileMetadataService {
                 .orElse(this.saveDirectoryMetadata(user, new DirectoryDto("Home", null)));
     }
 
+    @Transactional(readOnly = true)
     public FolderViewDto listDirectory(Long userId, Long folderId) {
+
+        if (folderId != null && userId.equals(folderId)) {
+            folderId = null;
+        }
 
         List<FileMetadata> rawFiles = this.metaRepo.listDirectory(userId, folderId);
 
-
         List<FolderDto> content = rawFiles.stream()
-                .map(f ->  new FolderDto(
-                            f.getId(),
-                            f.getOriginalFilename(),
-                            f.isFolder(),
-                            (f.getBlob() != null) ? f.getBlob().getSizeInBytes() : 0L,
-                            f.getUploadedAt()))
+                .map(f -> new FolderDto(
+                        f.getId(),
+                        f.getOriginalFilename(),
+                        f.isFolder(),
+                        (f.getBlob() != null) ? f.getBlob().getSizeInBytes() : 0L,
+                        dateFormater.format(f.getUploadedAt())))
                 .collect(Collectors.toList());
 
-        List<BreadcrumbDto> path = new ArrayList<>();
+        List<BreadcrumbDto> path;
 
-        path.add(new BreadcrumbDto(null, "Home"));
+        if (folderId != null) {
+            List<BreadcrumbDto> records = this.getPathToRoot(folderId);
 
-        List<BreadcrumbDto> ancestors = folderId != null ? this.getPathToRoot(folderId) : Collections.emptyList();        
+            path = records.stream()
+                    .map(rec -> new BreadcrumbDto(rec.id(), rec.name()))
+                    .collect(Collectors.toList());
+        } else {
+            path = new ArrayList<>();
+            path.add(new BreadcrumbDto(null, "Home"));
+        }
 
-        path.addAll(ancestors);
-
-        FolderViewDto response = new FolderViewDto(path, content);
-
-        return response;
+        return new FolderViewDto(path, content);
     }
 
     public List<BreadcrumbDto> getPathToRoot(Long folderId) {

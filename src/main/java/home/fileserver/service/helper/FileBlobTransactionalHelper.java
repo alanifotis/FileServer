@@ -19,7 +19,7 @@ import java.util.stream.Collectors;
 
 @Component
 @RequiredArgsConstructor
-public class FileBlobStore {
+public class FileBlobTransactionalHelper {
 
     private final FileBlobRepository blobRepository;
 

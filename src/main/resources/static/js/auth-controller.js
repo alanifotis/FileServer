@@ -18,7 +18,7 @@ const hasPrf = await webauthnService.checkPrfSupport();
 
 if (!hasPrf) {
     console.error("PRF extension not supported.");
-    exceptionHandler.setInfoSpan("Your device doesn't support PRF. Try using Chrome on Desktop / Laptop.", "error");
+    exceptionHandler.setInfoSpan("Your device doesn't support PRF. Try using Chrome on Desktop / Laptop.", "warning");
 }
 
 /**
@@ -100,6 +100,7 @@ function stringifyUUID(arr) {
 // 4. Form Submission
 exceptionHandler.ui.form.addEventListener('submit', async (e) => {
     e.preventDefault();
+    e.stopPropagation();
 
     if (!exceptionHandler.ui.emailInput.checkValidity()) {
         exceptionHandler.ui.emailInput.reportValidity();
@@ -111,8 +112,7 @@ exceptionHandler.ui.form.addEventListener('submit', async (e) => {
 
     // Fail fast if CSRF is missing
     if (!csrfToken) {
-        exceptionHandler.setInfoSpan("Security Error: Missing CSRF Token. Please refresh the page.", "error");
-        return;
+        exceptionHandler.setInfoSpan("Security Error: Missing CSRF Token. Please refresh the page.", "warning");
     }
 
     const headers = { 'Content-Type': 'application/json', 'X-XSRF-TOKEN': csrfToken };
@@ -128,7 +128,12 @@ exceptionHandler.ui.form.addEventListener('submit', async (e) => {
 
 });
 
-async function registerWithoutPrf(email, headers) {
+async function registerWithoutPrf(email, headers, event) {
+
+   if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+    }
 
     exceptionHandler.setLoading(true);
     exceptionHandler.setInfoSpan("", "info");
@@ -140,6 +145,12 @@ async function registerWithoutPrf(email, headers) {
             '/registration/options',
             { email: email }
         );
+
+        console.log(registrationOptions);
+
+        if (registrationOptions.extensions) {
+            registrationOptions.extensions = {};
+        }
 
         const credentials = await webauthnService.createPasskey(registrationOptions);
 

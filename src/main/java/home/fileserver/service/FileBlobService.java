@@ -7,7 +7,7 @@ import org.springframework.stereotype.Service;
 import home.fileserver.dto.BlobUploadResult;
 import home.fileserver.dto.StorageResultDto;
 import home.fileserver.models.FileBlob;
-import home.fileserver.service.helper.FileBlobStore;
+import home.fileserver.service.helper.FileBlobTransactionalHelper;
 
 import java.io.InputStream;
 import java.util.List;
@@ -18,7 +18,7 @@ import java.util.UUID;
 public class FileBlobService {
 
     private final LocalFileStorageService storageService;
-    private final FileBlobStore blobStore;
+    private final FileBlobTransactionalHelper blobStore;
 
     public BlobUploadResult uploadChunk(InputStream dataStream, String uploadId, int chunkIndex, boolean isLastChunk, String originalFileName, long userID) {
 

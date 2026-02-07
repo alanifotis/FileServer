@@ -1,11 +1,12 @@
 package home.fileserver.dto.files;
 
-import java.time.Instant;
+import com.fasterxml.jackson.annotation.JsonFormat;
 
 public record FolderDto (
+    @JsonFormat(shape = JsonFormat.Shape.STRING)
     Long id, 
     String name, 
     boolean isFolder, 
     Long size, 
-    Instant createdAt
+    String createdAt
 ) {}

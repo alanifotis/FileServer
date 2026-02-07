@@ -315,8 +315,9 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                 
         }
 
-        public Authentication autoMagicLogin(HttpServletRequest request, HttpServletResponse response,
-                        @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
+        public Authentication autoMagicLogin(HttpServletRequest request, 
+                HttpServletResponse response,
+                @RequestBody PublicKeyCredential<AuthenticatorAssertionResponse> assertion) {
                 PublicKeyCredentialRequestOptions options = this.requestOptionsRepository.load(request);
 
                 if (options == null) {
@@ -349,6 +350,9 @@ public class CustomPublicKeyCredentialCreationOptionsService {
                         SecurityContextHolder.setContext(context);
 
                         this.securityContextRepository.saveContext(context, request, response);
+
+                        this.metadataService.instantiateRootDirectoryAndMetadata(user);
+
 
                         return fullAuth;
         }

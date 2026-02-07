@@ -544,3 +544,28 @@ body {
     animation: spin 1s linear infinite;
     margin: 0 auto 10px;
 }
+
+.highlight-new {
+    /* Use a CSS animation to handle the lifecycle */
+    animation: highlightFade 5s ease-out forwards;
+    
+    /* Modern structural touch: an accent bar on the left */
+    border-left: 4px solid #12a205; 
+    
+    /* Ensure it stands out if the list has alternating row colors */
+    position: relative;
+    z-index: 1;
+}
+
+@keyframes highlightFade {
+    0% { 
+        background-color: rgba(255, 193, 7, 0.4); /* Stronger amber at start */
+    }
+    70% {
+        background-color: rgba(255, 193, 7, 0.1); /* Linger slightly */
+    }
+    100% { 
+        background-color: transparent;
+        border-left: 4px solid transparent;
+    }
+}

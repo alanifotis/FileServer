@@ -30,42 +30,48 @@ const FolderManager = {
     cache: {},
 
     async ensureFolderExists(name, parentId) {
-        // Create a unique key for cache: "123/FolderName" or "root/FolderName"
-        const key = `${parentId || 'root'}/${name}`;
-        if (this.cache[key]) return this.cache[key];
+        const key = `${parentId}/${name}`;
 
-        const formData = new FormData();
-        formData.append("folderName", name);
-        if (parentId) formData.append("parentId", parentId);
-
-        try {
-            const res = await fetch(CONFIG.ENDPOINTS.CREATE_FOLDER, {
-                method: 'POST',
-                headers: { 'X-XSRF-TOKEN': Utils.getCsrfToken() },
-                body: formData
-            });
-
-            if (!res.ok) throw new Error(`Failed to create folder: ${name}`);
-            const data = await res.json();
-
-            this.cache[key] = data.id;
-            return data.id;
-        } catch (err) {
-            console.error(err);
-            throw err; // Propagate error to stop upload of children
+        // If a request is already in progress or finished, return that promise
+        if (this.cache[key]) {
+            return await this.cache[key];
         }
+
+        // Store the promise itself in the cache immediately
+        this.cache[key] = (async () => {
+            const formData = new FormData();
+            formData.append("folderName", name);
+            if (parentId) formData.append("parentId", parentId);
+
+            try {
+                const res = await fetch(CONFIG.ENDPOINTS.CREATE_FOLDER, {
+                    method: 'POST',
+                    headers: { 'X-XSRF-TOKEN': Utils.getCsrfToken() },
+                    body: formData
+                });
+
+                if (!res.ok) throw new Error(`Failed to create folder: ${name}`);
+                const data = await res.json();
+
+                const currentViewId = Utils.getCurrentFolderId();
+                if (String(parentId) === String(currentViewId)) {
+                    UploadQueue.scheduleRefresh(parentId, data.id);
+                }
+
+                return data.id;
+            } catch (err) {
+                delete this.cache[key];
+                throw err;
+            }
+        })();
+
+        return await this.cache[key];
     },
 
-    // For Input Directory: Resolves "A/B/C" path to the final Backend ID
     async resolvePathToId(relativePath, rootId) {
         if (!relativePath) return rootId;
 
         const folders = relativePath.split('/');
-        // If the path includes the filename at the end, pop it. 
-        // (webkitRelativePath usually is "Folder/File.txt")
-        // We assume the caller passes ONLY the folder path part if possible, 
-        // but let's be safe: logic depends on how you parse it.
-        // Here we assume 'relativePath' is JUST folders: "Photos/Summer"
 
         let currentParentId = rootId;
 
@@ -296,11 +302,12 @@ class FileUploader {
 
     async start() {
         try {
+            let lastResponse = {};
             for (let i = 0; i < this.totalChunks; i++) {
                 if (this.isAborted) throw new Error("Cancelled");
-                await this._uploadChunk(i);
+                lastResponse = await this._uploadChunk(i);
             }
-            if (this.callbacks.onSuccess) this.callbacks.onSuccess(this.file);
+            if (this.callbacks.onSuccess) this.callbacks.onSuccess(lastResponse);
         } catch (error) {
             if (!this.isAborted && this.callbacks.onError) this.callbacks.onError(error, this.file);
         }
@@ -328,7 +335,7 @@ class FileUploader {
                 if (this.isAborted) return;
                 const res = await this._xhr(fd, chunkIndex);
                 if (res.uploadId) this.uploadId = res.uploadId;
-                return;
+                return res;
             } catch (e) {
                 if (attempt === CONFIG.MAX_RETRIES - 1) throw e;
                 await new Promise(r => setTimeout(r, CONFIG.RETRY_DELAY));
@@ -376,8 +383,9 @@ const UploadQueue = {
 
     // displayPath is optional, used for Tree View visualization
     add(file, parentId, displayPath = '') {
+        const contextViewId = Utils.getCurrentFolderId();
         UploadWidget.addItem(file, () => this.cancelSpecific(file.name));
-        this.queue.push({ file, parentId, displayPath });
+        this.queue.push({ file, parentId, displayPath, contextViewId });
         this.process();
     },
 
@@ -389,36 +397,22 @@ const UploadQueue = {
 
         const uploader = new FileUploader(task.file, task.parentId, {
             onProgress: (pct) => UploadWidget.updateProgress(task.file, pct),
-            onSuccess: () => {
+            onSuccess: (response) => {
+
                 this.activeUploads--;
                 delete this.activeInstances[task.file.name];
                 UploadWidget.updateStatus(task.file, 'success');
 
-                // 1. Get where the user is currently looking (Returns NULL for Root)
+                let newFileId = null;
+                if (response) {
+                    newFileId = response.id ? response.id : response.fileId;
+                }
+
+
                 const currentViewId = Utils.getCurrentFolderId();
 
-                // 2. Normalize for comparison
-                const normalize = (val) => (val === null || val === undefined || val === 'null') ? 'root' : String(val);
-
-                const uploadKey = normalize(task.parentId);
-                const viewKey = normalize(currentViewId);
-
-                console.log(`[Upload Success] File: ${task.file.name} | Uploaded To: ${uploadKey} | Viewing: ${viewKey}`);
-
-                // 3. THE FIX: Handle the "Root ID" mismatch
-                // Check if keys match exactly OR if we are viewing root and uploaded to the known Root ID
-                const isExactMatch = uploadKey === viewKey;
-                
-                // If we are at root view, but uploaded to a number, we assume it's the root ID
-                // (Optimistic refresh for root)
-                const isRootMismatch = viewKey === 'root' && uploadKey !== 'root';
-
-                if (isExactMatch || isRootMismatch) {
-                    console.log("✅ Refreshing view...");
-                    // Pass 'false' to keep history/URL intact
-                    FileExplorer.loadFolder(currentViewId, false);
-                } else {
-                    console.log("❌ IDs mismatch. Skipping refresh.");
+                if (String(task.parentId) === String(currentViewId)) {
+                    this.scheduleRefresh(task.contextViewId, newFileId);
                 }
 
                 this.process();
@@ -453,6 +447,40 @@ const UploadQueue = {
         this.activeInstances = {};
         this.queue = [];
         this.activeUploads = 0;
+    },
+
+    scheduleRefresh(targetViewId, newItemId = null) {
+        if (this.refreshTimer) clearTimeout(this.refreshTimer);
+
+        this.refreshTimer = setTimeout(async () => {
+            const currentViewId = Utils.getCurrentFolderId();
+
+            if (String(targetViewId) === String(currentViewId)) {
+                console.log(`✅ Context match. Refreshing view.`);
+
+                await FileExplorer.loadFolder(currentViewId, false);
+
+                if (newItemId) {
+                    this.highlightItem(String(newItemId));
+                }
+            }
+        }, 500);
+    },
+
+    highlightItem(id) {
+        setTimeout(() => {
+            const el = document.querySelector(`li[data-id="${id}"]`);
+
+            if (el) {
+                // Add the class. The @keyframes handles the rest.
+                el.classList.add('highlight-new');
+
+                // Still useful to keep the user focused
+                el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+            } else {
+                console.warn(`❌ Highlight failed: No element found with [data-id="${id}"]`);
+            }
+        }, 250);
     }
 };
 
@@ -469,13 +497,13 @@ async function traverseEntry(entry, parentId, currentPath = '') {
     }
     else if (entry.isDirectory) {
         try {
-            // 1. Create Folder in Backend
+
             const newFolderId = await FolderManager.ensureFolderExists(entry.name, parentId);
 
-            // 2. Update Visual Path
+            UploadQueue.scheduleRefresh(Utils.getCurrentFolderId(), newFolderId);
+
             const newPath = currentPath ? `${currentPath}/${entry.name}` : entry.name;
 
-            // 3. Read Children
             const dirReader = entry.createReader();
             const entries = await readAllEntries(dirReader);
 
@@ -540,13 +568,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
         const files = Array.from(e.target.files);
 
-        // This process might be slow for thousands of files if done sequentially in foreground.
-        // For production, consider moving path resolution to the UploadQueue logic asynchronously.
         for (const file of files) {
-            // file.webkitRelativePath = "Photos/Summer/img.jpg"
             const parts = file.webkitRelativePath.split('/');
-            parts.pop(); // remove filename
-            const folderPath = parts.join('/'); // "Photos/Summer"
+            parts.pop();
+            const folderPath = parts.join('/');
 
             try {
                 // Ensure backend folders exist

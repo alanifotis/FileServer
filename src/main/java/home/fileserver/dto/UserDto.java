@@ -7,7 +7,7 @@ public record UserDto(
         String displayName,
         String avatarUri,
         String planTier,
-        long storageUsedBytes,
+        Long storageUsedBytes,
         long rootFolderId) 
         {
                 public static UserDto fromUser(User user) {
@@ -18,6 +18,4 @@ public record UserDto(
                         user.getStorageUsedBytes(), 
                         user.getId());
                 }
-
-
         }

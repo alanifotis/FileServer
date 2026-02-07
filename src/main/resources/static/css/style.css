@@ -1,18 +1,21 @@
 :root {
     /* Color Palette */
-    --primary-color: #0f6cbd; /* Professional Blue */
-    --primary-dark: #08467d;  /* Darker blue for info panel bg */
+    --primary-color: #0f6cbd;
+    /* Professional Blue */
+    --primary-dark: #08467d;
+    /* Darker blue for info panel bg */
     --primary-hover: #0c5a9e;
     --bg-gradient-start: #f0f4f8;
     --bg-gradient-end: #d9e2ec;
     --text-dark: #1a202c;
-    --text-light: #f8fafc; /* For text on dark backgrounds */
+    --text-light: #f8fafc;
+    /* For text on dark backgrounds */
     --text-muted: #718096;
     --border-color: #e2e8f0;
     --error-color: #e53e3e;
     --success-color: #38a169;
     --card-bg: #ffffff;
-    
+
     /* Spacing & Sizing */
     --radius-lg: 12px;
     --radius-md: 8px;
@@ -40,7 +43,7 @@ body {
 .main-container {
     width: 100%;
     /* Max width increased to accommodate two columns comfortably */
-    max-width: 900px; 
+    max-width: 900px;
 }
 
 .split-card {
@@ -48,13 +51,16 @@ body {
     border-radius: var(--radius-lg);
     box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
     display: flex;
-    overflow: hidden; /* Ensures children don't bleed out of rounded corners */
-    flex-direction: row; /* Default to side-by-side for desktop */
+    overflow: hidden;
+    /* Ensures children don't bleed out of rounded corners */
+    flex-direction: row;
+    /* Default to side-by-side for desktop */
 }
 
 /* --- Left Panel: Info --- */
 .info-panel {
-    flex: 1; /* Takes 50% width */
+    flex: 1;
+    /* Takes 50% width */
     background-color: var(--primary-dark);
     color: var(--text-light);
     padding: 40px;
@@ -62,7 +68,7 @@ body {
     flex-direction: column;
     justify-content: center;
     /* Optional: subtle pattern overlay */
-    background-image: radial-gradient(circle at 10% 20%, rgba(255,255,255,0.05) 0%, transparent 20%), radial-gradient(circle at 90% 80%, rgba(255,255,255,0.05) 0%, transparent 20%);
+    background-image: radial-gradient(circle at 10% 20%, rgba(255, 255, 255, 0.05) 0%, transparent 20%), radial-gradient(circle at 90% 80%, rgba(255, 255, 255, 0.05) 0%, transparent 20%);
 }
 
 .info-content h2 {
@@ -75,13 +81,13 @@ body {
     font-size: 1.1rem;
     margin-top: 24px;
     margin-bottom: 12px;
-    color: rgba(255,255,255,0.9);
+    color: rgba(255, 255, 255, 0.9);
 }
 
 .info-content p {
     line-height: 1.6;
     margin-bottom: 16px;
-    color: rgba(255,255,255,0.85);
+    color: rgba(255, 255, 255, 0.85);
 }
 
 .info-content ul {
@@ -94,7 +100,7 @@ body {
     position: relative;
     padding-left: 24px;
     line-height: 1.5;
-    color: rgba(255,255,255,0.85);
+    color: rgba(255, 255, 255, 0.85);
 }
 
 /* Custom bullet point for list */
@@ -102,7 +108,8 @@ body {
     content: "✓";
     position: absolute;
     left: 0;
-    color: #68d391; /* A light green */
+    color: #68d391;
+    /* A light green */
     font-weight: bold;
 }
 
@@ -114,7 +121,7 @@ body {
     color: white;
     text-decoration: none;
     font-weight: 600;
-    border-bottom: 2px solid rgba(255,255,255,0.3);
+    border-bottom: 2px solid rgba(255, 255, 255, 0.3);
     padding-bottom: 2px;
     transition: all 0.2s;
 }
@@ -125,7 +132,8 @@ body {
 
 /* --- Right Panel: Form --- */
 .form-panel {
-    flex: 1; /* Takes 50% width */
+    flex: 1;
+    /* Takes 50% width */
     padding: 40px;
     background-color: var(--card-bg);
     display: flex;
@@ -194,9 +202,22 @@ body {
     font-size: 0.9rem;
     text-align: center;
 }
-.form-feedback.success {background-color: #c6f6d5; color: #22543d; border: 1px solid #9ae6b4;}
-.form-feedback.error {background-color: #fed7d7; color: #822727; border: 1px solid #feb2b2;}
-.hidden { display: none; }
+
+.form-feedback.success {
+    background-color: #c6f6d5;
+    color: #22543d;
+    border: 1px solid #9ae6b4;
+}
+
+.form-feedback.error {
+    background-color: #fed7d7;
+    color: #822727;
+    border: 1px solid #feb2b2;
+}
+
+.hidden {
+    display: none;
+}
 
 
 /* --- Button & Spinner --- */
@@ -214,17 +235,26 @@ body {
     display: flex;
     justify-content: center;
     align-items: center;
-    gap: 10px; /* Space between icon and text */
+    gap: 10px;
+    /* Space between icon and text */
 }
 
-.btn-primary:hover { background-color: var(--primary-hover); }
-.btn-primary:disabled { opacity: 0.7; cursor: not-allowed; }
+.btn-primary:hover {
+    background-color: var(--primary-hover);
+}
 
-.fingerprint-icon { margin-right: -4px;}
+.btn-primary:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+}
+
+.fingerprint-icon {
+    margin-right: -4px;
+}
 
 /* CSS Spinner */
 .spinner {
-    border: 3px solid rgba(255,255,255,0.3);
+    border: 3px solid rgba(255, 255, 255, 0.3);
     border-radius: 50%;
     border-top: 3px solid white;
     width: 20px;
@@ -233,8 +263,13 @@ body {
 }
 
 @keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 /* --- Footer --- */
@@ -250,20 +285,25 @@ body {
     text-decoration: none;
     font-weight: 600;
 }
-.auth-footer a:hover { text-decoration: underline; }
+
+.auth-footer a:hover {
+    text-decoration: underline;
+}
 
 
 /* --- Responsive Design --- */
 @media (max-width: 768px) {
     .split-card {
-        flex-direction: column; /* Stack vertically on mobile */
-        max-width: 450px; /* Shrink width back down */
+        flex-direction: column;
+        /* Stack vertically on mobile */
+        max-width: 450px;
+        /* Shrink width back down */
     }
 
     .info-panel {
         padding: 30px;
     }
-    
+
     .form-panel {
         padding: 30px;
     }
@@ -275,14 +315,29 @@ body {
 }
 
 .btn-primary:disabled {
-    opacity: 0.5;              /* Fades the button */
-    cursor: not-allowed;       /* Shows a 'stop' symbol on hover */
-    pointer-events: none;      /* Prevents clicking completely */
-    filter: grayscale(0.5);    /* Optional: Desaturates the color slightly */
+    opacity: 0.5;
+    /* Fades the button */
+    cursor: not-allowed;
+    /* Shows a 'stop' symbol on hover */
+    pointer-events: none;
+    /* Prevents clicking completely */
+    filter: grayscale(0.5);
+    /* Optional: Desaturates the color slightly */
 }
 
 .form-feedback.warning {
     color: #856404;
     background-color: #fff3cd;
     border: 1px solid #ffeeba;
+}
+
+.temp-console {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    background: black;
+    color: lime;
+    z-index: 10000;
+    font-size: 10px;
+    width: 100%
 }

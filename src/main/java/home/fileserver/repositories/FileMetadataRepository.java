@@ -28,6 +28,8 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long
 
     boolean existsByIdAndUser(Long id, User user);
 
+    boolean existsByIdAndUserId(Long id, Long userId);
+
     @Query("SELECT m FROM FileMetadata m " +
             "WHERE m.user = :user " +
             "AND m.originalFilename = :originalFilename " +

@@ -8,10 +8,13 @@ const FileExplorer = {
 
     init() {
         window.onpopstate = (event) => {
-            const folderId = event.state ? event.state.folderId : null;
+            const folderId = event.state ? event.state.folderId : Utils.getCurrentFolderId();
             this.loadFolder(folderId, false);
         };
-        this.loadFolder(Utils.getCurrentFolderId(), false);
+
+        const initialId = Utils.getCurrentFolderId();
+
+        this.loadFolder(initialId, false); 
     },
 
     async loadFolder(folderId, pushToHistory = true) {
@@ -22,13 +25,14 @@ const FileExplorer = {
             </li>`;
 
         try {
+            console.log(`The folderId is: ${folderId}`);
             const res = await fetch('/api/files/ls', {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'X-XSRF-TOKEN': Utils.getCsrfToken() 
                 },
-                body: JSON.stringify({ folderId: folderId })
+                body: JSON.stringify({ folderId: folderId ? String(folderId) : null })
             });
             
             if (!res.ok) throw new Error("Failed to load");
@@ -77,6 +81,7 @@ const FileExplorer = {
         items.forEach(item => {
             const li = document.createElement('li');
             li.className = 'tree-item';
+            li.setAttribute('data-id', item.id);
             li.onclick = () => {
                 if(item.isFolder) this.loadFolder(item.id);
                 else window.open(`/api/files/download/${item.id}`, '_blank');
