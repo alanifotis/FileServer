@@ -2,6 +2,7 @@
 
 import Utils from "./Utils.js";
 
+
 const FileExplorer = {
     listEl: document.getElementById('file-list'),
     breadcrumbEl: document.getElementById('breadcrumbs'),
@@ -12,8 +13,8 @@ const FileExplorer = {
             this.loadFolder(folderId, false);
         };
 
+        // Handles the "Refresh" case by reading the ID from the URL on page load
         const initialId = Utils.getCurrentFolderId();
-
         this.loadFolder(initialId, false); 
     },
 
@@ -25,24 +26,27 @@ const FileExplorer = {
             </li>`;
 
         try {
-            console.log(`The folderId is: ${folderId}`);
-            const res = await fetch('/api/files/ls', {
+            const targetUrl = new URL('/api/files/ls', window.location.origin);
+            if (folderId) {
+                targetUrl.searchParams.set('folderId', folderId);
+            }
+
+            const res = await fetch(targetUrl, {
                 method: 'POST',
                 headers: { 
                     'Content-Type': 'application/json',
                     'X-XSRF-TOKEN': Utils.getCsrfToken() 
-                },
-                body: JSON.stringify({ folderId: folderId ? String(folderId) : null })
+                }
             });
             
             if (!res.ok) throw new Error("Failed to load");
             const data = await res.json();
 
             if (pushToHistory) {
-                const url = folderId ? `/folder/${folderId}` : '/';
-                history.pushState({ folderId }, '', url);
+                history.pushState({ folderId }, '', targetUrl);
             }
 
+            // 4. Render
             this.renderBreadcrumbs(data.path);
             this.renderList(data.content);
 
@@ -54,6 +58,29 @@ const FileExplorer = {
 
     renderBreadcrumbs(path) {
         this.breadcrumbEl.innerHTML = '';
+        
+        const chevronIcon = `<svg class="separator-icon" viewBox="0 0 24 24" fill="currentColor"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"/></svg>`;
+
+        const homeLi = document.createElement('li');
+        
+        if (!path[0].id) {
+            homeLi.innerHTML = `<span class="current">Home</span>`;
+            this.breadcrumbEl.appendChild(homeLi);
+            return;
+        } 
+        
+        homeLi.innerHTML = `
+            <a href="/" class="crumb-link">Home</a> 
+            ${chevronIcon}
+        `;
+        
+        homeLi.querySelector('a').onclick = (e) => {
+            e.preventDefault();
+            this.loadFolder(null);
+        };
+
+        this.breadcrumbEl.appendChild(homeLi);
+
         path.forEach((crumb, index) => {
             const li = document.createElement('li');
             const isLast = index === path.length - 1;
@@ -61,7 +88,11 @@ const FileExplorer = {
             if (isLast) {
                 li.innerHTML = `<span class="current">${crumb.name}</span>`;
             } else {
-                li.innerHTML = `<a href="#" class="crumb-link">${crumb.name}</a> <span class="separator">/</span>`;
+                li.innerHTML = `
+                    <a href="/api/files/ls?folderId=${crumb.id}" class="crumb-link">${crumb.name}</a> 
+                    ${chevronIcon}
+                `;
+                
                 li.querySelector('a').onclick = (e) => {
                     e.preventDefault();
                     this.loadFolder(crumb.id);
@@ -73,7 +104,7 @@ const FileExplorer = {
 
     renderList(items) {
         this.listEl.innerHTML = '';
-        if (!items.length) {
+        if (!items || !items.length) {
             this.listEl.innerHTML = `<li class="empty-state"><p>This folder is empty</p></li>`;
             return;
         }

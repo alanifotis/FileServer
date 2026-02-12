@@ -1,21 +1,37 @@
 :root {
+    /* --- Colors --- */
     --primary: #1a73e8;
-    /* G-Drive Blue */
     --primary-hover: #1557b0;
-    --bg-app: #f8f9fa;
-    --bg-surface: #ffffff;
-    --text-main: #202124;
-    --text-sub: #5f6368;
+    
+    /* Backgrounds */
+    --bg-app: #f8f9fa;       
+    --bg-surface: #ffffff;   
+    --bg-hover: #f1f3f4;     
+    --bg-accent: #e8f0fe;    
+    
+    /* Text */
+    --text-main: #202124;    
+    --text-sub: #5f6368;     
+    --text-inverse: #ffffff; 
+
+    /* UI Elements */
     --border: #dadce0;
     --green: #188038;
     --red: #d93025;
-    --shadow-widget: 0 1px 2px 0 rgba(60, 64, 67, 0.3), 0 2px 6px 2px rgba(60, 64, 67, 0.15);
+    
+    /* Shadows */
+    --shadow-widget: 0 0.25rem 1.5rem rgba(0, 0, 0, 0.15), 0 0.0625rem 0.125rem rgba(0, 0, 0, 0.1);
 }
 
+/* --- RESET & GLOBAL --- */
 * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
+}
+
+html {
+    font-size: 16px; /* Base size for rem calculations */
 }
 
 body {
@@ -27,12 +43,11 @@ body {
     justify-content: center;
     padding: 2rem;
     overflow: hidden;
-    /* Prevent body scroll, use inner scroll */
 }
 
 .app-container {
     width: 100%;
-    max-width: 1000px;
+    max-width: 62.5rem; /* 1000px */
     height: 100%;
     display: flex;
     flex-direction: column;
@@ -42,26 +57,25 @@ body {
 /* --- 1. SPLIT DROP ZONE --- */
 .drop-zone-container {
     position: relative;
-    height: 220px;
+    height: 13.75rem; /* 220px */
     background: var(--bg-surface);
-    border: 2px dashed var(--border);
-    border-radius: 12px;
+    border: 0.125rem dashed var(--border); /* 2px */
+    border-radius: 0.75rem; /* 12px */
     display: flex;
     overflow: hidden;
     transition: all 0.2s ease;
+    flex-shrink: 0;
 }
 
 .drop-zone-container.drag-active {
     border-color: var(--primary);
-    background: #e8f0fe;
+    background: var(--bg-accent);
 }
 
 .drop-zone-container.drag-active .drop-message-overlay {
     display: flex;
-    /* Show big overlay on drag */
 }
 
-/* The two distinct sides */
 .zone-half {
     flex: 1;
     display: flex;
@@ -72,12 +86,12 @@ body {
 }
 
 .zone-half:hover {
-    background-color: #f1f3f4;
+    background-color: var(--bg-hover);
 }
 
 .zone-half:hover .zone-icon {
     color: var(--primary);
-    background: #e8f0fe;
+    background: var(--bg-accent);
 }
 
 .zone-content {
@@ -86,11 +100,11 @@ body {
 }
 
 .zone-icon {
-    width: 48px;
-    height: 48px;
-    margin: 0 auto 12px auto;
+    width: 3rem;  /* 48px */
+    height: 3rem;
+    margin: 0 auto 0.75rem auto; /* 12px bottom margin */
     color: var(--text-sub);
-    background: #f1f3f4;
+    background: var(--bg-hover);
     border-radius: 50%;
     display: flex;
     align-items: center;
@@ -98,18 +112,6 @@ body {
     transition: all 0.2s;
 }
 
-.zone-content h3 {
-    font-size: 1.1rem;
-    font-weight: 500;
-    margin-bottom: 4px;
-}
-
-.zone-content p {
-    font-size: 0.85rem;
-    color: var(--text-sub);
-}
-
-/* Divider "OR" */
 .zone-divider {
     width: 1px;
     background: var(--border);
@@ -121,24 +123,20 @@ body {
 
 .zone-divider span {
     background: var(--bg-surface);
-    padding: 4px 8px;
+    padding: 0.25rem 0.5rem;
     font-size: 0.75rem;
     font-weight: 600;
     color: var(--text-sub);
     border: 1px solid var(--border);
-    border-radius: 12px;
+    border-radius: 0.75rem;
     z-index: 2;
 }
 
-/* Drag Overlay (Hidden normally, shows on drag) */
 .drop-message-overlay {
     display: none;
     position: absolute;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background: rgba(255, 255, 255, 0.9);
+    top: 0; left: 0; right: 0; bottom: 0;
+    background: rgba(255, 255, 255, 0.95);
     z-index: 10;
     align-items: center;
     justify-content: center;
@@ -150,12 +148,12 @@ body {
     color: var(--primary);
 }
 
-/* --- 2. BROWSER LIST --- */
+/* --- 2. BROWSER WINDOW --- */
 .browser-window {
     flex: 1;
     background: var(--bg-surface);
     border: 1px solid var(--border);
-    border-radius: 8px;
+    border-radius: 0.5rem; /* 8px */
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -164,42 +162,100 @@ body {
 .browser-header {
     padding: 1rem 1.5rem;
     border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    min-height: 3.5rem; /* 56px */
 }
 
+/* --- BREADCRUMBS --- */
 .breadcrumb {
-    font-size: 1.1rem;
-    color: var(--text-sub);
+    list-style: none;
+    display: flex;
+    align-items: center;
+    flex-wrap: wrap;
+    font-size: 1.05rem;
+    padding: 0;
+    margin: 0;
 }
 
-.breadcrumb .current {
-    color: var(--text-main);
+.breadcrumb li {
+    display: flex;
+    align-items: center;
+}
+
+.crumb-link {
+    text-decoration: none;
+    color: var(--primary);
+    padding: 0.375rem 0.5rem; /* 6px 8px */
+    border-radius: 0.375rem;
+    transition: all 0.2s ease;
     font-weight: 500;
 }
 
-.breadcrumb .separator {
-    margin: 0 8px;
+.crumb-link:hover {
+    background-color: var(--bg-accent);
+    color: var(--primary-hover);
 }
 
+.current {
+    color: var(--text-main);
+    font-weight: 600;
+    padding: 0.375rem 0.5rem;
+    cursor: default;
+}
+
+.separator-icon {
+    width: 1.25rem;  /* 20px */
+    height: 1.25rem;
+    color: var(--text-sub);
+    margin: 0 0.125rem;
+}
+
+/* --- FILE LIST TABLE --- */
 .file-list-header {
     display: flex;
-    padding: 0.75rem 1.5rem;
+    align-items: center;
+    padding: 0.75rem 0.75rem; /* 12px */
     font-size: 0.85rem;
-    font-weight: 500;
+    font-weight: 600;
     color: var(--text-sub);
     border-bottom: 1px solid var(--border);
+    background: var(--bg-surface);
+}
+
+/* Columns */
+.col-icon {
+    width: 2.5rem; /* 40px */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-sub);
+    flex-shrink: 0;
 }
 
 .col-name {
     flex: 1;
+    font-weight: 500;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding-right: 1rem;
 }
 
-.col-status {
-    width: 120px;
+.col-date {
+    width: 9.375rem; /* 150px */
+    color: var(--text-sub);
+    font-size: 0.85rem;
+    text-align: left;
+    flex-shrink: 0;
 }
 
 .col-size {
-    width: 100px;
+    width: 5rem; /* 80px */
     text-align: right;
+    color: var(--text-sub);
+    font-size: 0.85rem;
+    flex-shrink: 0;
 }
 
 .scroll-viewport {
@@ -211,6 +267,23 @@ body {
     list-style: none;
 }
 
+.tree-item {
+    cursor: pointer;
+    border-bottom: 1px solid var(--bg-hover);
+    transition: background-color 0.1s;
+}
+
+.tree-item:hover {
+    background-color: var(--bg-hover);
+}
+
+.tree-row {
+    display: flex;
+    align-items: center;
+    padding: 0.625rem 0.75rem; /* 10px 12px */
+}
+
+/* --- EMPTY STATE & SPINNER --- */
 .empty-state {
     padding: 4rem;
     text-align: center;
@@ -221,351 +294,250 @@ body {
     gap: 1rem;
 }
 
-/* --- 3. UPLOAD WIDGET (Bottom Right) --- */
+.spinner {
+    border: 0.1875rem solid #f3f3f3; /* 3px */
+    border-top: 0.1875rem solid var(--primary);
+    border-radius: 50%;
+    width: 1.5rem; /* 24px */
+    height: 1.5rem;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin { 
+    0% { transform: rotate(0deg); } 
+    100% { transform: rotate(360deg); } 
+}
+
+/* --- UPLOAD WIDGET --- */
 .upload-widget {
     position: fixed;
     bottom: 0;
-    right: 24px;
-    width: 360px;
+    right: 2rem;
+    width: 23.75rem; /* 380px */
     background: var(--bg-surface);
     box-shadow: var(--shadow-widget);
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    /* Docked style */
+    border-radius: 0.75rem 0.75rem 0 0; 
+    
     display: flex;
     flex-direction: column;
-    z-index: 100;
-    transition: transform 0.3s cubic-bezier(0.4, 0.0, 0.2, 1);
+    overflow: hidden; 
+    transition: transform 0.35s cubic-bezier(0.2, 0, 0, 1);
+    z-index: 1000;
 }
 
 .upload-widget.hidden {
-    transform: translateY(110%);
-    /* Slide down out of view */
+    transform: translateY(100%);
+    pointer-events: none;
 }
 
 .upload-widget.minimized {
-    transform: translateY(calc(100% - 48px));
-    /* Show only header */
+    transform: translateY(calc(100% - 3.25rem)); /* 52px */
 }
 
 /* Widget Header */
 .widget-header {
-    height: 48px;
-    background: #323232;
-    /* G-Drive Dark Header */
-    color: white;
+    height: 3.25rem; /* 52px */
+    background: var(--text-main);
+    color: var(--text-inverse);
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 0 16px;
-    border-top-left-radius: 8px;
-    border-top-right-radius: 8px;
+    padding: 0 1rem;
     cursor: pointer;
+    user-select: none;
+    transition: background 0.2s;
 }
 
 .widget-header:hover {
-    background: #424242;
+    background: #2d2e30; 
 }
 
 #widget-title {
     font-size: 0.95rem;
     font-weight: 500;
+    letter-spacing: 0.018rem;
 }
 
 .widget-controls {
     display: flex;
-    gap: 4px;
+    gap: 0.5rem;
 }
 
 .control-btn {
-    background: none;
+    background: rgba(255, 255, 255, 0.1);
     border: none;
-    color: rgba(255, 255, 255, 0.7);
-    cursor: pointer;
-    padding: 4px;
+    color: #e8eaed;
+    width: 1.75rem; /* 28px */
+    height: 1.75rem;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
 }
 
 .control-btn:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: white;
+    background: rgba(255, 255, 255, 0.25);
+    color: var(--text-inverse);
 }
 
-/* Widget Body (List) */
+.widget-toggle-icon {
+    transition: transform 0.3s ease;
+}
+
+.rotate-180 {
+    transform: rotate(180deg);
+}
+
+/* Widget Body */
 .widget-body {
-    height: 250px;
-    /* Fixed height for scroll */
+    max-height: 18.75rem; /* 300px */
     overflow-y: auto;
-    background: white;
-    border-left: 1px solid var(--border);
-    border-right: 1px solid var(--border);
+    background: var(--bg-surface);
 }
 
-/* Individual Upload Row */
+/* Upload Rows */
 .upload-row {
+    position: relative;
     display: flex;
     align-items: center;
-    padding: 10px 16px;
-    height: 56px;
-    border-bottom: 1px solid #f1f3f4;
-    gap: 12px;
-    position: relative;
+    padding: 0.75rem 1rem;
+    border-bottom: 1px solid var(--bg-hover);
+    gap: 0.875rem; /* 14px */
+    background: var(--bg-surface);
+    transition: background 0.2s;
+}
+
+.upload-row:last-child {
+    border-bottom: none;
 }
 
 .upload-row:hover {
-    background-color: #f8f9fa;
+    background-color: var(--bg-app);
 }
 
-/* File Icon */
+/* Row Icons */
 .row-icon {
-    width: 24px;
-    height: 24px;
+    width: 2rem; /* 32px */
+    height: 2rem;
     flex-shrink: 0;
-    color: var(--primary);
-}
-
-/* Name */
-.row-name {
-    flex: 1;
-    font-size: 0.85rem;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    color: var(--text-main);
-}
-
-/* Actions / Status (Right Side) */
-.row-actions {
-    width: 24px;
-    height: 24px;
     display: flex;
     align-items: center;
     justify-content: center;
-}
-
-/* The Cancel Button (Hidden by default, shown on hover or when uploading) */
-.cancel-btn {
-    background: none;
-    border: none;
-    cursor: pointer;
+    border-radius: 0.25rem;
+    background-color: var(--bg-hover);
     color: var(--text-sub);
-    opacity: 0;
-    transition: opacity 0.2s;
 }
 
-.upload-row:hover .cancel-btn {
-    opacity: 1;
+/* SVG Styles (Common) */
+.row-icon svg { width: 1.25rem; height: 1.25rem; fill: currentColor; }
+.cancel-btn svg { width: 1.25rem; height: 1.25rem; stroke: currentColor; stroke-width: 2; fill: none; }
+.success-icon svg { width: 1.375rem; height: 1.375rem; stroke: currentColor; stroke-width: 2.5; fill: none; }
+.error-icon svg { width: 1.25rem; height: 1.25rem; stroke: currentColor; stroke-width: 2; fill: none; }
+
+/* File Types */
+.type-pdf { color: #ea4335; background-color: #fce8e6; }
+.type-xls { color: var(--green); background-color: #e6f4ea; }
+.type-doc { color: var(--primary); background-color: var(--bg-accent); }
+.type-img { color: #a142f4; background-color: #f3e8fd; }
+
+/* Row Text */
+.row-name {
+    flex: 1;
+    font-size: 0.85rem;
+    color: #3c4043;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-weight: 500;
+    z-index: 2;
 }
 
-/* Success Checkmark */
-.success-icon {
-    color: var(--green);
+/* Row Actions */
+.row-actions {
+    width: 1.5rem; /* 24px */
+    height: 1.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2;
+}
+
+.cancel-btn {
+    background: none; border: none; cursor: pointer; color: var(--text-sub);
+    padding: 0.25rem; border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s;
+}
+
+.cancel-btn:hover {
+    background: #e8eaed;
+    color: var(--text-main);
+}
+
+.success-icon, .error-icon {
     display: none;
+    animation: popIn 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
-.error-icon {
-    color: var(--red);
-    display: none;
-}
+.success-icon { color: var(--green); }
+.error-icon { color: var(--red); }
 
-/* Progress Bar (Bottom of row) */
+/* Status Logic */
+.upload-row.completed .success-icon { display: block; }
+.upload-row.completed .cancel-btn { display: none; }
+.upload-row.error .error-icon { display: block; }
+.upload-row.error .cancel-btn { display: none; }
+.upload-row.error .row-name { color: var(--red); }
+
+/* Progress Bar */
 .row-progress-track {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 3px;
+    height: 0.125rem; /* 2px */
     background: transparent;
-}
-
-.row-progress-fill {
-    height: 100%;
-    background: var(--primary);
-    width: 0%;
-    transition: width 0.2s linear;
-}
-
-/* Completed State Styles */
-.upload-row.completed .success-icon {
-    display: block;
-}
-
-.upload-row.completed .cancel-btn {
-    display: none !important;
-}
-
-/* Don't allow cancel after done */
-.upload-row.completed .row-progress-track {
-    display: none;
-}
-
-.upload-row.error .error-icon {
-    display: block;
-}
-
-.upload-row.error .cancel-btn {
-    display: none !important;
-}
-
-.upload-row.error .row-name {
-    color: var(--text-sub);
-    text-decoration: line-through;
-}
-
-/* --- BROWSER LIST ROW STYLES (New) --- */
-.browser-file-row {
-    display: flex;
-    padding: 12px 24px;
-    border-bottom: 1px solid #f1f3f4;
-    align-items: center;
-    font-size: 0.9rem;
-}
-
-.browser-col-name {
-    flex: 1;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    font-weight: 500;
-}
-
-.browser-col-status {
-    width: 120px;
-    color: #188038;
-    /* Green */
-}
-
-.browser-col-size {
-    width: 100px;
-    text-align: right;
-    color: #5f6368;
-}
-
-/* --- WIDGET TOGGLE ROTATION --- */
-/* Used to rotate the arrow icon without inline styles */
-.widget-toggle-icon {
-    transition: transform 0.3s ease;
-}
-
-.widget-toggle-icon.rotate-180 {
-    transform: rotate(180deg);
-}
-
-/* --- PROGRESS BARS --- */
-/* Ensure the fill has a transition via CSS, JS only touches variable/width property */
-.row-progress-fill {
-    height: 100%;
-    background: var(--primary);
-    width: 0%;
-    transition: width 0.2s linear;
-}
-
-
-
-/* --- TREE VIEW STYLES --- */
-.file-list {
-    list-style: none;
-    padding: 0;
-    margin: 0;
-}
-
-/* Common Row Style */
-.tree-row {
-    display: flex;
-    align-items: center;
-    padding: 8px 12px;
-    border-bottom: 1px solid #f1f3f4;
-    font-size: 0.9rem;
-    transition: background 0.1s;
-}
-
-.tree-row:hover {
-    background-color: #f8f9fa;
-}
-
-/* Indentation Container */
-.tree-children {
-    list-style: none;
-    padding-left: 24px;
-    /* The visual nesting */
-    border-left: 1px solid #e8eaed;
-    /* Optional: tree guide line */
-    display: block;
-    /* Can be toggled to 'none' for collapsing */
-}
-
-/* Columns */
-.col-icon {
-    width: 24px;
-    display: flex;
-    align-items: center;
-    color: #5f6368;
-}
-
-.col-name {
-    flex: 1;
-    font-weight: 500;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-}
-
-.col-status {
-    width: 100px;
-    color: #188038;
-    font-size: 0.85rem;
-}
-
-.col-size {
-    width: 80px;
-    text-align: right;
-    color: #5f6368;
-    font-size: 0.85rem;
-}
-
-/* Folder Specific */
-.is-folder>.tree-row {
-    background-color: #fafafa;
-    font-weight: 600;
-}
-
-.is-folder>.tree-row .col-icon {
-    color: #5f6368;
-}
-
-.spinner {
-    border: 3px solid #f3f3f3;
-    border-top: 3px solid #3498db;
-    border-radius: 50%;
-    width: 24px;
-    height: 24px;
-    animation: spin 1s linear infinite;
-    margin: 0 auto 10px;
-}
-
-.highlight-new {
-    /* Use a CSS animation to handle the lifecycle */
-    animation: highlightFade 5s ease-out forwards;
-    
-    /* Modern structural touch: an accent bar on the left */
-    border-left: 4px solid #12a205; 
-    
-    /* Ensure it stands out if the list has alternating row colors */
-    position: relative;
     z-index: 1;
+}
+
+.row-progress-fill {
+    height: 100%;
+    background: var(--primary);
+    width: 0;
+    transition: width 0.2s linear;
+}
+
+.upload-row.completed .row-progress-track {
+    opacity: 0;
+    transition: opacity 0.5s;
+}
+
+/* --- ANIMATIONS --- */
+@keyframes popIn {
+    0% { transform: scale(0); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
 }
 
 @keyframes highlightFade {
     0% { 
-        background-color: rgba(255, 193, 7, 0.4); /* Stronger amber at start */
+        background-color: rgba(255, 193, 7, 0.4); 
+        border-left-color: var(--green);
     }
     70% {
-        background-color: rgba(255, 193, 7, 0.1); /* Linger slightly */
+        background-color: rgba(255, 193, 7, 0.1);
     }
     100% { 
         background-color: transparent;
-        border-left: 4px solid transparent;
+        border-left-color: transparent;
     }
+}
+
+.highlight-new {
+    animation: highlightFade 5s ease-out forwards;
+    border-left: 0.25rem solid var(--green);
+    position: relative;
+    z-index: 1;
 }

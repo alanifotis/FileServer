@@ -28,7 +28,7 @@ public class LocalFileStorageService {
     private final Path rootLocation;
     private final Tika tika;
 
-    private static final int LOCK_POOL_SIZE = 64;
+    private static final int LOCK_POOL_SIZE = 128;
     private final Lock[] fileLocks;
 
     private static final Pattern SAFE_FILENAME = Pattern.compile("^[a-zA-Z0-9._-]+$");
@@ -56,17 +56,20 @@ public class LocalFileStorageService {
         }
 
         Path finalDestination = this.rootLocation
-        .resolve(getUserRootPath(userId))
-        .resolve(storageFilename)
-        .normalize();
-        
+                .resolve(getUserRootPath(userId))
+                .resolve(storageFilename)
+                .normalize();
+
         if (!finalDestination.startsWith(this.rootLocation)) {
             throw new InvalidFilePathException("Attempted path traversal detected");
         }
 
-        Path tempFile = this.rootLocation.resolve(storageFilename + ".tmp");
+        Path tempFile = this.rootLocation
+                .resolve(getUserRootPath(userId))
+                .resolve(storageFilename + ".tmp");
 
         Lock lock = getLock(storageFilename);
+
         lock.lock();
 
         try {
@@ -81,10 +84,7 @@ public class LocalFileStorageService {
 
             try (OutputStream fileOut = Files.newOutputStream(tempFile, options);
                     OutputStream out = (writeDigest != null) ? new DigestOutputStream(fileOut, writeDigest) : fileOut;
-                    InputStream in = new BufferedInputStream(inputStream)) {
-
-                in.transferTo(out);
-            }
+                    InputStream in = new BufferedInputStream(inputStream)) { in.transferTo(out); }
 
             if (!isLastChunk) {
                 return new StorageResultDto(storageFilename, null, null, Files.size(tempFile));
@@ -139,8 +139,8 @@ public class LocalFileStorageService {
         Lock lock = getLock(storagePath);
         lock.lock();
         try {
-            Path file = rootLocation.resolve(storagePath).normalize();
-            Files.deleteIfExists(file);
+            Path targetFile = this.rootLocation.resolve(storagePath).normalize();
+            Files.deleteIfExists(targetFile);
             Files.deleteIfExists(rootLocation.resolve(storagePath + ".tmp"));
         } catch (IOException ignored) {
         } finally {

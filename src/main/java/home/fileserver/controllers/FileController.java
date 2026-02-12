@@ -6,11 +6,9 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
-
 import home.fileserver.dto.BlobUploadResult;
 import home.fileserver.dto.DirectoryDto;
 import home.fileserver.dto.FileItem;
-import home.fileserver.dto.FileUploadRequest;
 import home.fileserver.dto.files.FolderViewDto;
 import home.fileserver.models.FileMetadata;
 import home.fileserver.models.User;
@@ -18,6 +16,7 @@ import home.fileserver.repositories.AppUserRepository;
 import home.fileserver.service.FileBlobService;
 import home.fileserver.service.FileMetadataService;
 import home.fileserver.service.FileStorageService;
+import lombok.extern.slf4j.Slf4j;
 
 import java.io.IOException;
 import java.nio.file.Files;
@@ -26,6 +25,7 @@ import java.util.List;
 import java.util.Map;
 
 @RestController
+@Slf4j
 @RequestMapping("/api/files")
 public class FileController {
 
@@ -127,41 +127,51 @@ public class FileController {
         return ResponseEntity.ok(Map.of("id", String.valueOf(folder.getId())));
     }
 
-    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    public ResponseEntity<?> uploadFile(
-            @AuthenticationPrincipal User user,
-            @ModelAttribute FileUploadRequest request) throws IOException {
-
+@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+public ResponseEntity<?> uploadFile(
+        @AuthenticationPrincipal User user,
+        @RequestPart("file") MultipartFile file,
+        @RequestParam(required = false) Long parentId,
+        @RequestParam(required = false) String uploadId,
+        @RequestParam(defaultValue = "0") Integer chunkIndex,
+        @RequestParam(defaultValue = "1") Integer totalChunks) {
+    try {
+        // Your logic remains clean
         BlobUploadResult result = blobService.uploadChunk(
-                request.file().getInputStream(),
-                request.uploadId(),
-                request.chunkIndex(),
-                request.isLastChunk(),
-                request.file().getOriginalFilename(),
+                file.getInputStream(),
+                uploadId,
+                chunkIndex,
+                (chunkIndex + 1) >= totalChunks,
+                file.getOriginalFilename(),
                 user.getId()
-            );
+        );
 
         if (!result.isComplete()) {
             return ResponseEntity.accepted().body(Map.of(
-                    "status", "partial",
-                    "uploadId", result.tempStorageId(),
-                    "chunkIndex", request.chunkIndex()));
+                "status", "partial",
+                "uploadId", result.tempStorageId(),
+                "chunkIndex", chunkIndex));
         }
 
         FileMetadata metadata = metadataService.saveFileMetadata(
                 user,
                 result.fileBlob(),
-                request.file().getOriginalFilename(),
+                file.getOriginalFilename(),
                 result.detectedContentType(),
-                request.parentId());
+                parentId);
 
         return ResponseEntity.ok(Map.of(
-                "status", "complete",
-                "fileId", metadata.getId(),
-                "fileName", metadata.getOriginalFilename()));
-    }
+            "status", "complete",
+            "fileId", metadata.getId(),
+            "fileName", metadata.getOriginalFilename()));
 
-    @DeleteMapping("/{id}")
+    } catch (IOException e) {
+        throw new RuntimeException("File processing failed", e);
+    }
+}
+
+
+@DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFile(
             @AuthenticationPrincipal User user,
             @PathVariable Long id) {
@@ -172,10 +182,7 @@ public class FileController {
     @PostMapping("/ls")
     public ResponseEntity<FolderViewDto> listDirectory(
          @AuthenticationPrincipal User currentUser,
-         @Nullable @RequestBody Map<String, String> payload) {
-
-
-        Long folderId = ( payload.get("folderId") == null || payload.get("folderId").isBlank() ) ? null : Long.valueOf(payload.get("folderId"));
+         @Nullable Long folderId) {
 
         FolderViewDto response = this.metadataService.listDirectory(currentUser.getId(), folderId);
 
@@ -185,5 +192,4 @@ public class FileController {
 
         return ResponseEntity.ok(response);
     }
-
 }

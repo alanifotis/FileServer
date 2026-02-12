@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Drive Upload</title>
+    <title>Personal Drive</title>
     <link rel="stylesheet" href="/css/files.css">
     <link rel="shortcut icon" href="/favicon/files.png" type="image/x-icon">
 </head>
@@ -47,7 +47,6 @@
             <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
         </section>
 
-
         <section class="browser-window">
             <div class="browser-header">
                 <ul id="breadcrumbs" class="breadcrumb">
@@ -55,14 +54,17 @@
             </div>
 
             <div class="file-list-header">
+                <span class="col-icon"></span> 
                 <span class="col-name">Name</span>
-                <span class="col-date">Date Modified</span> <span class="col-size">Size</span>
+                <span class="col-date">Date Modified</span> 
+                <span class="col-size">Size</span>
             </div>
 
             <div class="scroll-viewport">
                 <ul id="file-list" class="file-list">
                     <li class="empty-state">
-                        <div class="spinner"></div> <p>Loading files...</p>
+                        <div class="spinner"></div> 
+                        <p>Loading files...</p>
                     </li>
                 </ul>
             </div>
@@ -75,7 +77,7 @@
             <span id="widget-title">Uploads</span>
             <div class="widget-controls">
                 <button id="widget-toggle-btn" class="control-btn" aria-label="Minimize">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <svg class="widget-toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
                 </button>
                 <button id="widget-close-btn" class="control-btn" aria-label="Close">
                     <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>

@@ -369,7 +369,7 @@ async function login(email, headers) {
     }
 
     exceptionHandler.setInfoSpan("Loged in successfully! Redirecting...", "success");
-    setTimeout(() => window.location.href = '/files', 2500);
+    setTimeout(() => window.location.href = '/', 1500);
 
 }
 
