@@ -56,6 +56,7 @@ DNS_LIST=(
   "pixel.local"
   "192.168.0.149.nip.io"
   "fileserver.local"
+  "kdriver.duckdns.org"
 )
 
 # Network Configuration (Add your IPs here)
@@ -64,6 +65,7 @@ IP_LIST=(
   "192.168.0.149"
   "0.0.0.0"
   "192.168.10.252"
+  "95.88.55.106"
   "::1"
 )
 

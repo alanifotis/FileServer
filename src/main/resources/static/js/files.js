@@ -128,10 +128,8 @@ document.addEventListener("DOMContentLoaded", () => {
     UploadWidget.init();
     FileExplorer.init();
 
-    const dropZone = document.getElementById('drop-zone');
     const fileInput = document.getElementById('file-input');
     const folderInput = document.getElementById('folder-input');
-    const rootId = Utils.getCurrentFolderId();
 
     // 1. CLICK TRIGGERS
     document.getElementById('trigger-file').addEventListener('click', (e) => {
@@ -175,26 +173,38 @@ document.addEventListener("DOMContentLoaded", () => {
         folderInput.value = '';
     });
 
-    // 4. DRAG & DROP
-    ['dragenter', 'dragover'].forEach(evt => {
-        dropZone.addEventListener(evt, (e) => {
-            e.preventDefault();
-            dropZone.classList.add('drag-active');
-        });
-    });
+    // 4. GLOBAL DRAG & DROP
+    const globalOverlay = document.getElementById('fullscreen-drop-overlay');
+    let dragCounter = 0;
 
-    ['dragleave', 'drop'].forEach(evt => {
-        dropZone.addEventListener(evt, (e) => {
-            e.preventDefault();
-            dropZone.classList.remove('drag-active');
-        });
-    });
-
-    dropZone.addEventListener('drop', async (e) => {
+    document.addEventListener('dragenter', (e) => {
         e.preventDefault();
-        const currentRootId = Utils.getCurrentFolderId();
+        dragCounter++;
+        globalOverlay.classList.add('drag-active');
+    });
 
+    document.addEventListener('dragover', (e) => {
+        e.preventDefault(); // Required to allow dropping
+    });
+
+    document.addEventListener('dragleave', (e) => {
+        e.preventDefault();
+        dragCounter--;
+        if (dragCounter === 0) {
+            globalOverlay.classList.remove('drag-active');
+        }
+    });
+
+    document.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        
+        // Reset state
+        dragCounter = 0;
+        globalOverlay.classList.remove('drag-active');
+
+        const currentRootId = Utils.getCurrentFolderId();
         const items = e.dataTransfer.items;
+        
         if (!items) return;
 
         const entries = [];
@@ -206,6 +216,7 @@ document.addEventListener("DOMContentLoaded", () => {
         }
 
         if (entries.length > 0) {
+            // Traverse folders
             for (const entry of entries) {
                 await traverseEntry(entry, currentRootId, '');
             }

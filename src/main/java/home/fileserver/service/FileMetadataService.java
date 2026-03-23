@@ -1,5 +1,6 @@
 package home.fileserver.service;
 
+import java.io.FileNotFoundException;
 import java.nio.file.Files;
 import java.time.Instant;
 import java.time.ZoneId;
@@ -11,12 +12,15 @@ import java.util.Set;
 import java.util.stream.Collectors;
 
 import org.jspecify.annotations.Nullable;
+import org.springframework.core.io.FileSystemResource;
+import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import home.fileserver.dto.DirectoryDto;
+import home.fileserver.dto.DownloadFile;
 import home.fileserver.dto.FileMetadataDto;
 import home.fileserver.dto.files.BreadcrumbDto;
 import home.fileserver.dto.files.FolderDto;
@@ -290,5 +294,14 @@ public class FileMetadataService {
                 .param("folderId", folderId)
                 .query(BreadcrumbDto.class)
                 .list();
+    }
+
+    public DownloadFile getFile(User user, Long id) throws FileNotFoundException {
+        if (this.validateOwnerShip(id, user.getId())) { 
+            var meta = this.metaRepo.findByIdWithBlob(id).orElseThrow(() -> new FileNotFoundException("User not found for ID: "));
+            var filePath = new FileSystemResource(this.localFileStorageService.getUserRootPath(user.getId()).resolve(meta.getBlob().getStoragePath()));
+            return new DownloadFile(meta.getOriginalFilename(), MediaType.parseMediaType(meta.getContentType()), filePath);
+        }
+       return null;
     }
 }

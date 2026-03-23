@@ -1,6 +1,7 @@
 package home.fileserver.controllers;
 
 import org.jspecify.annotations.Nullable;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -18,11 +19,14 @@ import home.fileserver.service.FileMetadataService;
 import home.fileserver.service.FileStorageService;
 import lombok.extern.slf4j.Slf4j;
 
+import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+
 
 @RestController
 @Slf4j
@@ -58,8 +62,6 @@ public class FileController {
                 fileStorageService.initUserRoot(user.getId());
             }
 
-            
-
             boolean isChunked = totalChunks > 1;
 
             String savedName = fileStorageService.storeFile(
@@ -77,6 +79,57 @@ public class FileController {
             return ResponseEntity.status(500).body(Map.of("error", e.getMessage()));
         }
     }
+@GetMapping("/download/{id}")
+    public ResponseEntity<?> downloadFile(@PathVariable Long id, @AuthenticationPrincipal User user) {
+        try {
+            var file = metadataService.getFile(user, id);
+            if (file == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            // Let the backend decide based on the content type
+            String disposition = isViewable(file.type()) ? "inline" : "attachment";
+            String headerValue = disposition + "; filename=\"" + file.originalFilename() + "\"";
+
+            return ResponseEntity.ok()
+                .contentType(file.type())
+                .header(HttpHeaders.CONTENT_DISPOSITION, headerValue)
+                .body(file.resourcePath());
+            
+        } catch (FileNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
+    }
+
+    // Whitelist specific 'application/...' types browsers can render natively
+    private static final Set<String> VIEWABLE_APPLICATION_SUBTYPES = Set.of(
+        "pdf",
+        "json",
+        "xml",
+        "javascript"
+    );
+
+    private boolean isViewable(MediaType mediaType) {
+        if (mediaType == null) return false;
+        
+        String type = mediaType.getType().toLowerCase();
+        String subtype = mediaType.getSubtype().toLowerCase();
+
+        if ("html".equals(subtype) || "svg+xml".equals(subtype)) {
+            return false;
+        }
+
+        if ("image".equals(type) || "video".equals(type) || "audio".equals(type) || "text".equals(type)) {
+            return true;
+        }
+
+        if ("application".equals(type)) {
+            return VIEWABLE_APPLICATION_SUBTYPES.contains(subtype);
+        }
+
+        return false;
+    }
+
 
     @PostMapping("/set-avatar")
     public ResponseEntity<?> postMethodName(
@@ -127,51 +180,49 @@ public class FileController {
         return ResponseEntity.ok(Map.of("id", String.valueOf(folder.getId())));
     }
 
-@PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-public ResponseEntity<?> uploadFile(
-        @AuthenticationPrincipal User user,
-        @RequestPart("file") MultipartFile file,
-        @RequestParam(required = false) Long parentId,
-        @RequestParam(required = false) String uploadId,
-        @RequestParam(defaultValue = "0") Integer chunkIndex,
-        @RequestParam(defaultValue = "1") Integer totalChunks) {
-    try {
-        // Your logic remains clean
-        BlobUploadResult result = blobService.uploadChunk(
-                file.getInputStream(),
-                uploadId,
-                chunkIndex,
-                (chunkIndex + 1) >= totalChunks,
-                file.getOriginalFilename(),
-                user.getId()
-        );
+    @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<?> uploadFile(
+            @AuthenticationPrincipal User user,
+            @RequestPart("file") MultipartFile file,
+            @RequestParam(required = false) Long parentId,
+            @RequestParam(required = false) String uploadId,
+            @RequestParam(defaultValue = "0") Integer chunkIndex,
+            @RequestParam(defaultValue = "1") Integer totalChunks) {
+        try {
+            // Your logic remains clean
+            BlobUploadResult result = blobService.uploadChunk(
+                    file.getInputStream(),
+                    uploadId,
+                    chunkIndex,
+                    (chunkIndex + 1) >= totalChunks,
+                    file.getOriginalFilename(),
+                    user.getId());
 
-        if (!result.isComplete()) {
-            return ResponseEntity.accepted().body(Map.of(
-                "status", "partial",
-                "uploadId", result.tempStorageId(),
-                "chunkIndex", chunkIndex));
+            if (!result.isComplete()) {
+                return ResponseEntity.accepted().body(Map.of(
+                        "status", "partial",
+                        "uploadId", result.tempStorageId(),
+                        "chunkIndex", chunkIndex));
+            }
+
+            FileMetadata metadata = metadataService.saveFileMetadata(
+                    user,
+                    result.fileBlob(),
+                    file.getOriginalFilename(),
+                    result.detectedContentType(),
+                    parentId);
+
+            return ResponseEntity.ok(Map.of(
+                    "status", "complete",
+                    "fileId", metadata.getId(),
+                    "fileName", metadata.getOriginalFilename()));
+
+        } catch (IOException e) {
+            throw new RuntimeException("File processing failed", e);
         }
-
-        FileMetadata metadata = metadataService.saveFileMetadata(
-                user,
-                result.fileBlob(),
-                file.getOriginalFilename(),
-                result.detectedContentType(),
-                parentId);
-
-        return ResponseEntity.ok(Map.of(
-            "status", "complete",
-            "fileId", metadata.getId(),
-            "fileName", metadata.getOriginalFilename()));
-
-    } catch (IOException e) {
-        throw new RuntimeException("File processing failed", e);
     }
-}
 
-
-@DeleteMapping("/{id}")
+    @DeleteMapping("/{id}")
     public ResponseEntity<Void> deleteFile(
             @AuthenticationPrincipal User user,
             @PathVariable Long id) {
@@ -181,8 +232,8 @@ public ResponseEntity<?> uploadFile(
 
     @PostMapping("/ls")
     public ResponseEntity<FolderViewDto> listDirectory(
-         @AuthenticationPrincipal User currentUser,
-         @Nullable Long folderId) {
+            @AuthenticationPrincipal User currentUser,
+            @Nullable Long folderId) {
 
         FolderViewDto response = this.metadataService.listDirectory(currentUser.getId(), folderId);
 

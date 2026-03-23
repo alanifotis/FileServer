@@ -541,3 +541,50 @@ body {
     position: relative;
     z-index: 1;
 }
+
+/* --- GLOBAL DROP OVERLAY (FIXED) --- */
+.fullscreen-drop-overlay {
+    position: fixed;
+    top: 0; left: 0; right: 0; bottom: 0;
+    /* Dropped the opacity from 0.95 to 0.6 for a nice glass effect */
+    background: rgba(26, 115, 232, 0.6); 
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s ease-in-out;
+    /* Increased the blur so the background isn't distracting */
+    backdrop-filter: blur(8px); 
+    -webkit-backdrop-filter: blur(8px);
+}
+
+.fullscreen-drop-overlay.drag-active {
+    opacity: 1;
+    pointer-events: auto;
+}
+
+.fullscreen-drop-overlay .overlay-content {
+    text-align: center;
+    /* Explicitly forcing white text and icon */
+    color: #ffffff; 
+    transform: scale(0.9);
+    transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.fullscreen-drop-overlay.drag-active .overlay-content {
+    transform: scale(1);
+}
+
+.fullscreen-drop-overlay svg {
+    margin-bottom: 1rem;
+    /* Ensure the icon is white */
+    stroke: #ffffff; 
+}
+
+.fullscreen-drop-overlay h2 {
+    font-weight: 500;
+    letter-spacing: 0.5px;
+    margin: 0;
+}

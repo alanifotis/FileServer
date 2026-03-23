@@ -131,4 +131,7 @@ public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long
            "AND (:parentId IS NULL AND m.parentId IS NULL OR m.parentId = :parentId) " +
            "ORDER BY m.isFolder DESC, m.originalFilename ASC")
     List<FileMetadata> listDirectory(@Param("userId") Long userId, @Nullable @Param("parentId") Long parentId);
+
+    @Query("SELECT f FROM FileMetadata f JOIN FETCH f.blob WHERE f.id = :id")
+    Optional<FileMetadata> findByIdWithBlob(@Param("id") Long id);
 }
