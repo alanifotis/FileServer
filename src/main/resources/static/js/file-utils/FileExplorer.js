@@ -1,7 +1,7 @@
 'use strict';
 
 import Utils from "./Utils.js";
-
+import Sidebar from "./Sidebar.js";
 
 const FileExplorer = {
     listEl: document.getElementById('file-list'),
@@ -41,6 +41,19 @@ const FileExplorer = {
             
             if (!res.ok) throw new Error("Failed to load");
             const data = await res.json();
+
+            if (!Sidebar.isInitialized) {
+                if (!folderId) {
+                    // We are at the root! Pass the data directly to save a fetch.
+                    Sidebar.init(data.content);
+                } else {
+                    // We loaded directly into a sub-folder via URL. 
+                    // Tell Sidebar to init without data so it fetches the Root itself.
+                    Sidebar.init(); 
+                }
+            }
+
+            Sidebar.setActiveFolder(folderId);
 
             if (pushToHistory) {
                 history.pushState({ folderId }, '', targetUrl);

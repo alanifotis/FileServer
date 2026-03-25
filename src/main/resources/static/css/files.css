@@ -45,13 +45,144 @@ body {
     overflow: hidden;
 }
 
+/* --- OVERRIDDEN: APP CONTAINER (Now a Row to fit Sidebar) --- */
 .app-container {
     width: 100%;
-    max-width: 62.5rem; /* 1000px */
+    max-width: 85rem; /* Widened to accommodate the sidebar */
     height: 100%;
+    display: flex;
+    flex-direction: row; /* Changed from column to row */
+    gap: 1.5rem;
+}
+
+/* --- NEW: MAIN CONTENT WRAPPER --- */
+.main-content {
+    flex: 1;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
+    min-width: 0; /* Prevents flexbox overflow issues */
+}
+
+/* --- NEW: SIDEBAR --- */
+.sidebar {
+    width: 16rem; /* 256px width like VS Code */
+    background: var(--bg-surface);
+    border: 1px solid var(--border);
+    border-radius: 0.5rem;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    flex-shrink: 0;
+}
+
+.sidebar-header {
+    padding: 1rem;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05rem;
+    color: var(--text-sub);
+    border-bottom: 1px solid var(--border);
+}
+
+.sidebar-content {
+    flex: 1;
+    padding: 0.5rem 0;
+}
+
+/* --- NEW: VS CODE TREE STYLES --- */
+.vs-tree {
+    list-style: none;
+    font-size: 0.85rem;
+}
+
+.vs-tree ul {
+    list-style: none;
+    padding-left: 0.8rem; /* Indentation for nested folders */
+    display: none; 
+}
+
+.vs-tree ul.expanded {
+    display: block;
+}
+
+.tree-node-item {
+    display: flex;
+    align-items: center;
+    padding: 0.25rem 0.5rem;
+    cursor: pointer;
+    color: var(--text-main);
+    user-select: none;
+    white-space: nowrap;
+}
+
+.tree-node-item:hover {
+    background-color: var(--bg-hover);
+}
+
+.tree-node-item.selected {
+    background-color: var(--bg-accent);
+    color: var(--primary);
+}
+
+.tree-toggle {
+    width: 1rem;
+    height: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-right: 0.25rem;
+    color: var(--text-sub);
+    transition: transform 0.1s;
+    flex-shrink: 0;
+}
+
+.tree-toggle svg {
+    width: 1rem;
+    height: 1rem;
+    fill: none;
+    stroke: currentColor;
+    stroke-width: 2;
+}
+
+.tree-toggle.expanded {
+    transform: rotate(90deg);
+}
+
+.empty-toggle {
+    visibility: hidden;
+}
+
+.tree-icon {
+    width: 1.1rem;
+    height: 1.1rem;
+    margin-right: 0.4rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.tree-icon svg { 
+    width: 100%; 
+    height: 100%; 
+}
+
+.tree-name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* State Classes for JS injection */
+.tree-loading {
+    color: var(--text-sub);
+    padding-left: 2rem;
+}
+
+.tree-error {
+    color: var(--red);
+    padding-left: 1.5rem;
 }
 
 /* --- 1. SPLIT DROP ZONE --- */
@@ -587,4 +718,10 @@ body {
     font-weight: 500;
     letter-spacing: 0.5px;
     margin: 0;
+}
+
+.tree-empty-state {
+    color: var(--text-sub);
+    padding-left: 2rem;
+    font-style: italic;
 }

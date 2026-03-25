@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,78 +8,103 @@
     <link rel="stylesheet" href="/css/files.css">
     <link rel="shortcut icon" href="/favicon/files.png" type="image/x-icon">
 </head>
+
 <body>
     <div id="fullscreen-drop-overlay" class="fullscreen-drop-overlay">
         <div class="overlay-content">
-            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                <polyline points="17 8 12 3 7 8"/>
-                <line x1="12" y1="3" x2="12" y2="15"/>
+            <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                <polyline points="17 8 12 3 7 8" />
+                <line x1="12" y1="3" x2="12" y2="15" />
             </svg>
             <h2>Drop files or folders anywhere to upload</h2>
         </div>
     </div>
     <main class="app-container">
-        
-        <section id="drop-zone" class="drop-zone-container">
-            <div class="drop-message-overlay">
-                <div class="overlay-content">
-                    <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <h3>Drop items to upload</h3>
-                </div>
-            </div>
-
-            <div id="trigger-file" class="zone-half file-zone">
-                <div class="zone-content">
-                    <div class="zone-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
-                    </div>
-                    <h3>Upload Files</h3>
-                    <p>Click to select single or multiple files</p>
-                </div>
-            </div>
-
-            <div class="zone-divider">
-                <span>OR</span>
-            </div>
-
-            <div id="trigger-folder" class="zone-half folder-zone">
-                <div class="zone-content">
-                    <div class="zone-icon">
-                        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
-                    </div>
-                    <h3>Upload Folder</h3>
-                    <p>Click to select an entire directory</p>
-                </div>
-            </div>
-
-            <input type="file" id="file-input" multiple hidden>
-            <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
-        </section>
-
-        <section class="browser-window">
-            <div class="browser-header">
-                <ul id="breadcrumbs" class="breadcrumb">
-                    </ul>
-            </div>
-
-            <div class="file-list-header">
-                <span class="col-icon"></span> 
-                <span class="col-name">Name</span>
-                <span class="col-date">Date Modified</span> 
-                <span class="col-size">Size</span>
-            </div>
-
-            <div class="scroll-viewport">
-                <ul id="file-list" class="file-list">
-                    <li class="empty-state">
-                        <div class="spinner"></div> 
-                        <p>Loading files...</p>
-                    </li>
+        <aside class="sidebar">
+            <div class="sidebar-header">Explorer</div>
+            <div class="sidebar-content scroll-viewport">
+                <ul id="sidebar-tree" class="vs-tree">
                 </ul>
             </div>
-        </section>
+        </aside>
 
+        <div class="main-content">
+
+            <section id="drop-zone" class="drop-zone-container">
+                <div class="drop-message-overlay">
+                    <div class="overlay-content">
+                        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                            stroke-width="2">
+                            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+                            <polyline points="17 8 12 3 7 8" />
+                            <line x1="12" y1="3" x2="12" y2="15" />
+                        </svg>
+                        <h3>Drop items to upload</h3>
+                    </div>
+                </div>
+
+                <div id="trigger-file" class="zone-half file-zone">
+                    <div class="zone-content">
+                        <div class="zone-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" />
+                                <polyline points="14 2 14 8 20 8" />
+                                <line x1="12" y1="18" x2="12" y2="12" />
+                                <line x1="9" y1="15" x2="15" y2="15" />
+                            </svg>
+                        </div>
+                        <h3>Upload Files</h3>
+                        <p>Click to select single or multiple files</p>
+                    </div>
+                </div>
+
+                <div class="zone-divider">
+                    <span>OR</span>
+                </div>
+
+                <div id="trigger-folder" class="zone-half folder-zone">
+                    <div class="zone-content">
+                        <div class="zone-icon">
+                            <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                                stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
+                            </svg>
+                        </div>
+                        <h3>Upload Folder</h3>
+                        <p>Click to select an entire directory</p>
+                    </div>
+                </div>
+
+                <input type="file" id="file-input" multiple hidden>
+                <input type="file" id="folder-input" webkitdirectory directory multiple hidden>
+            </section>
+
+            <section class="browser-window">
+                <div class="browser-header">
+                    <ul id="breadcrumbs" class="breadcrumb">
+                    </ul>
+                </div>
+
+                <div class="file-list-header">
+                    <span class="col-icon"></span>
+                    <span class="col-name">Name</span>
+                    <span class="col-date">Date Modified</span>
+                    <span class="col-size">Size</span>
+                </div>
+
+                <div class="scroll-viewport">
+                    <ul id="file-list" class="file-list">
+                        <li class="empty-state">
+                            <div class="spinner"></div>
+                            <p>Loading files...</p>
+                        </li>
+                    </ul>
+                </div>
+            </section>
+        </div>
     </main>
 
     <div id="upload-widget" class="upload-widget hidden">
@@ -86,17 +112,24 @@
             <span id="widget-title">Uploads</span>
             <div class="widget-controls">
                 <button id="widget-toggle-btn" class="control-btn" aria-label="Minimize">
-                    <svg class="widget-toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="6 9 12 15 18 9"></polyline></svg>
+                    <svg class="widget-toggle-icon" width="14" height="14" viewBox="0 0 24 24" fill="none"
+                        stroke="currentColor" stroke-width="3">
+                        <polyline points="6 9 12 15 18 9"></polyline>
+                    </svg>
                 </button>
                 <button id="widget-close-btn" class="control-btn" aria-label="Close">
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"></line><line x1="6" y1="6" x2="18" y2="18"></line></svg>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
                 </button>
             </div>
         </div>
-        
+
         <div id="widget-body" class="widget-body"></div>
     </div>
 
     <script type="module" src="/js/files.js"></script>
 </body>
+
 </html>

@@ -6,6 +6,7 @@ import Utils from './file-utils/Utils.js';
 import UploadWidget from './file-utils/UploadWidget.js';
 import UploadQueue from './file-utils/UploadQueue.js';
 import CONFIG from "./file-utils/MainConfig.js";
+import Sidebar from './file-utils/Sidebar.js';
 
 
 createPolicy();
