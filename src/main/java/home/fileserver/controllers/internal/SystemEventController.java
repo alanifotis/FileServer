@@ -23,10 +23,9 @@ public class SystemEventController {
 
     @GetMapping("/new-device")
     public ResponseEntity<String> handleHardwareEvent(HttpServletRequest request) {
-        log.warn("Someone called us!!!");
         String clientIp = request.getRemoteAddr();
         if (!IPV4.equals(clientIp) && !IPV6.equals(clientIp)) {
-            System.err.println("[SECURITY WARN] External attempt to trigger sync rejected from IP: " + clientIp);
+            log.warn("[SECURITY WARN] External attempt to trigger sync rejected from IP: " + clientIp);
             return ResponseEntity.status(HttpStatus.NOT_FOUND).build();
         }
 

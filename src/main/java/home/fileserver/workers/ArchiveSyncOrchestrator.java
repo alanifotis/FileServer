@@ -10,9 +10,11 @@ import home.fileserver.repositories.FileBlobSyncRepository;
 import home.fileserver.service.FileTransferService;
 import home.fileserver.service.helper.ArchiveDriveLocator;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 
 @Component
 @RequiredArgsConstructor
+@Slf4j
 public class ArchiveSyncOrchestrator {
 
     private final FileBlobSyncRepository syncRepository;
@@ -27,7 +29,7 @@ public class ArchiveSyncOrchestrator {
         Path externalDrivePath = driveLocator.forceScanAndVerify();
         
         if (externalDrivePath == null) {
-            System.out.println("[SYNC JOB] Event fired, but verified marker file was not found. Ignoring event.");
+            log.info("[SYNC JOB] Event fired, but verified marker file was not found. Ignoring event.");
             return;
         }
 
@@ -35,11 +37,11 @@ public class ArchiveSyncOrchestrator {
         List<PendingFileTransfer> pendingFiles = syncRepository.getPendingTransfers();
 
         if (pendingFiles.isEmpty()) {
-            System.out.println("[SYNC JOB] Drive verified, but no pending files to transfer.");
+            log.info("[SYNC JOB] Drive verified, but no pending files to transfer.");
             return; 
         }
 
-        System.out.println("[SYNC JOB] Dispatching " + pendingFiles.size() + " files to Virtual Threads.");
+        log.info("[SYNC JOB] Dispatching " + pendingFiles.size() + " files to Virtual Threads.");
 
         // 3. Dispatch to the Async Transfer Service
         for (PendingFileTransfer file : pendingFiles) {
