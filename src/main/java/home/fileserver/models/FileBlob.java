@@ -4,6 +4,8 @@ import java.time.Instant;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -18,7 +20,8 @@ import lombok.Setter;
 @Entity
 @Table(name = "file_blobs", indexes = {
     @Index(name = "idx_blob_hash", columnList = "sha256_hash", unique = true),
-    @Index(name = "idx_blob_hash_size", columnList = "sha256_hash, size_in_bytes", unique = true)
+    @Index(name = "idx_blob_hash_size", columnList = "sha256_hash, size_in_bytes", unique = true),
+    @Index(name = "idx_file_blobs_located_on", columnList = "located_on")
 })
 @Getter 
 @Setter
@@ -46,6 +49,11 @@ public class FileBlob {
     @Column(name = "ref_count", nullable = false)
     @Builder.Default
     private long refCount = 1;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "located_on", nullable = false, length = 50)
+    @Builder.Default
+    private StorageLocation locatedOn = StorageLocation.LOCAL;
 
     @Column(name = "created_at", nullable = false, updatable = false, insertable = false)
     private Instant createdAt;

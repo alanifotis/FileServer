@@ -44,7 +44,8 @@ class SecurityConfiguration {
                         "/index.html",
                         "/css/**",
                         "/error",
-                        "/js/**"
+                        "/js/**",
+                        "/api/internal/system/new-device"
         };
 
         private final static String[] COOKIES = { "JSESSIONID", "__Host-SESSION", "XSRF-TOKEN" };

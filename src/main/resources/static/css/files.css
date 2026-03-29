@@ -31,42 +31,43 @@
 }
 
 html {
-    font-size: 16px; /* Base size for rem calculations */
+    font-size: 16px; 
 }
 
 body {
     font-family: 'Google Sans', Roboto, RobotoDraft, Helvetica, Arial, sans-serif;
     background-color: var(--bg-app);
     color: var(--text-main);
-    height: 100vh;
+    height: 100dvh; /* FIX 1: Upgraded to dynamic viewport height for mobile browsers */
     display: flex;
     justify-content: center;
     padding: 2rem;
     overflow: hidden;
 }
 
-/* --- OVERRIDDEN: APP CONTAINER (Now a Row to fit Sidebar) --- */
+/* --- APP CONTAINER --- */
 .app-container {
     width: 100%;
-    max-width: 85rem; /* Widened to accommodate the sidebar */
+    max-width: 85rem; 
     height: 100%;
     display: flex;
-    flex-direction: row; /* Changed from column to row */
+    flex-direction: row; 
     gap: 1.5rem;
 }
 
-/* --- NEW: MAIN CONTENT WRAPPER --- */
+/* --- MAIN CONTENT WRAPPER --- */
 .main-content {
     flex: 1;
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
-    min-width: 0; /* Prevents flexbox overflow issues */
+    min-width: 0; 
+    min-height: 0; /* FIX 2: Forces flexbox to respect boundaries */
 }
 
-/* --- NEW: SIDEBAR --- */
+/* --- SIDEBAR --- */
 .sidebar {
-    width: 16rem; /* 256px width like VS Code */
+    width: 16rem; 
     background: var(--bg-surface);
     border: 1px solid var(--border);
     border-radius: 0.5rem;
@@ -89,9 +90,10 @@ body {
 .sidebar-content {
     flex: 1;
     padding: 0.5rem 0;
+    overflow-y: auto; /* FIX 3: Allows the tree to actually scroll! */
 }
 
-/* --- NEW: VS CODE TREE STYLES --- */
+/* --- VS CODE TREE STYLES --- */
 .vs-tree {
     list-style: none;
     font-size: 0.85rem;
@@ -99,7 +101,7 @@ body {
 
 .vs-tree ul {
     list-style: none;
-    padding-left: 0.8rem; /* Indentation for nested folders */
+    padding-left: 0.8rem; 
     display: none; 
 }
 
@@ -174,7 +176,6 @@ body {
     text-overflow: ellipsis;
 }
 
-/* State Classes for JS injection */
 .tree-loading {
     color: var(--text-sub);
     padding-left: 2rem;
@@ -185,13 +186,19 @@ body {
     padding-left: 1.5rem;
 }
 
+.tree-empty-state {
+    color: var(--text-sub);
+    padding-left: 2rem;
+    font-style: italic;
+}
+
 /* --- 1. SPLIT DROP ZONE --- */
 .drop-zone-container {
     position: relative;
-    height: 13.75rem; /* 220px */
+    height: 13.75rem; 
     background: var(--bg-surface);
-    border: 0.125rem dashed var(--border); /* 2px */
-    border-radius: 0.75rem; /* 12px */
+    border: 0.125rem dashed var(--border); 
+    border-radius: 0.75rem; 
     display: flex;
     overflow: hidden;
     transition: all 0.2s ease;
@@ -231,9 +238,9 @@ body {
 }
 
 .zone-icon {
-    width: 3rem;  /* 48px */
+    width: 3rem;  
     height: 3rem;
-    margin: 0 auto 0.75rem auto; /* 12px bottom margin */
+    margin: 0 auto 0.75rem auto; 
     color: var(--text-sub);
     background: var(--bg-hover);
     border-radius: 50%;
@@ -284,10 +291,11 @@ body {
     flex: 1;
     background: var(--bg-surface);
     border: 1px solid var(--border);
-    border-radius: 0.5rem; /* 8px */
+    border-radius: 0.5rem; 
     display: flex;
     flex-direction: column;
     overflow: hidden;
+    min-height: 0; /* FIX 2: Forces flexbox to pass constraints down */
 }
 
 .browser-header {
@@ -295,7 +303,7 @@ body {
     border-bottom: 1px solid var(--border);
     display: flex;
     align-items: center;
-    min-height: 3.5rem; /* 56px */
+    min-height: 3.5rem; 
 }
 
 /* --- BREADCRUMBS --- */
@@ -317,7 +325,7 @@ body {
 .crumb-link {
     text-decoration: none;
     color: var(--primary);
-    padding: 0.375rem 0.5rem; /* 6px 8px */
+    padding: 0.375rem 0.5rem; 
     border-radius: 0.375rem;
     transition: all 0.2s ease;
     font-weight: 500;
@@ -336,7 +344,7 @@ body {
 }
 
 .separator-icon {
-    width: 1.25rem;  /* 20px */
+    width: 1.25rem;  
     height: 1.25rem;
     color: var(--text-sub);
     margin: 0 0.125rem;
@@ -346,7 +354,7 @@ body {
 .file-list-header {
     display: flex;
     align-items: center;
-    padding: 0.75rem 0.75rem; /* 12px */
+    padding: 0.75rem 0.75rem; 
     font-size: 0.85rem;
     font-weight: 600;
     color: var(--text-sub);
@@ -356,7 +364,7 @@ body {
 
 /* Columns */
 .col-icon {
-    width: 2.5rem; /* 40px */
+    width: 2.5rem; 
     display: flex;
     align-items: center;
     justify-content: center;
@@ -374,7 +382,7 @@ body {
 }
 
 .col-date {
-    width: 9.375rem; /* 150px */
+    width: 9.375rem; 
     color: var(--text-sub);
     font-size: 0.85rem;
     text-align: left;
@@ -382,7 +390,7 @@ body {
 }
 
 .col-size {
-    width: 5rem; /* 80px */
+    width: 5rem; 
     text-align: right;
     color: var(--text-sub);
     font-size: 0.85rem;
@@ -401,7 +409,8 @@ body {
 .tree-item {
     cursor: pointer;
     border-bottom: 1px solid var(--bg-hover);
-    transition: background-color 0.1s;
+    transition: 0.1s;
+    background-color: var(--bg-surface);
 }
 
 .tree-item:hover {
@@ -411,7 +420,7 @@ body {
 .tree-row {
     display: flex;
     align-items: center;
-    padding: 0.625rem 0.75rem; /* 10px 12px */
+    padding: 0.625rem 0.75rem; 
 }
 
 /* --- EMPTY STATE & SPINNER --- */
@@ -426,10 +435,10 @@ body {
 }
 
 .spinner {
-    border: 0.1875rem solid #f3f3f3; /* 3px */
+    border: 0.1875rem solid #f3f3f3; 
     border-top: 0.1875rem solid var(--primary);
     border-radius: 50%;
-    width: 1.5rem; /* 24px */
+    width: 1.5rem; 
     height: 1.5rem;
     animation: spin 1s linear infinite;
 }
@@ -444,12 +453,10 @@ body {
     position: fixed;
     bottom: 0;
     right: 2rem;
-    width: 23.75rem; /* 380px */
+    width: 23.75rem; 
     background: var(--bg-surface);
     box-shadow: var(--shadow-widget);
-    /* Docked style */
     border-radius: 0.75rem 0.75rem 0 0; 
-    
     display: flex;
     flex-direction: column;
     overflow: hidden; 
@@ -463,12 +470,12 @@ body {
 }
 
 .upload-widget.minimized {
-    transform: translateY(calc(100% - 3.25rem)); /* 52px */
+    transform: translateY(calc(100% - 3.25rem)); 
 }
 
 /* Widget Header */
 .widget-header {
-    height: 3.25rem; /* 52px */
+    height: 3.25rem; 
     background: var(--text-main);
     color: var(--text-inverse);
     display: flex;
@@ -499,7 +506,7 @@ body {
     background: rgba(255, 255, 255, 0.1);
     border: none;
     color: #e8eaed;
-    width: 1.75rem; /* 28px */
+    width: 1.75rem; 
     height: 1.75rem;
     border-radius: 50%;
     display: flex;
@@ -524,7 +531,7 @@ body {
 
 /* Widget Body */
 .widget-body {
-    max-height: 18.75rem; /* 300px */
+    max-height: 18.75rem; 
     overflow-y: auto;
     background: var(--bg-surface);
 }
@@ -536,7 +543,7 @@ body {
     align-items: center;
     padding: 0.75rem 1rem;
     border-bottom: 1px solid var(--bg-hover);
-    gap: 0.875rem; /* 14px */
+    gap: 0.875rem; 
     background: var(--bg-surface);
     transition: background 0.2s;
 }
@@ -551,7 +558,7 @@ body {
 
 /* Row Icons */
 .row-icon {
-    width: 2rem; /* 32px */
+    width: 2rem; 
     height: 2rem;
     flex-shrink: 0;
     display: flex;
@@ -562,19 +569,16 @@ body {
     color: var(--text-sub);
 }
 
-/* SVG Styles (Common) */
 .row-icon svg { width: 1.25rem; height: 1.25rem; fill: currentColor; }
 .cancel-btn svg { width: 1.25rem; height: 1.25rem; stroke: currentColor; stroke-width: 2; fill: none; }
 .success-icon svg { width: 1.375rem; height: 1.375rem; stroke: currentColor; stroke-width: 2.5; fill: none; }
 .error-icon svg { width: 1.25rem; height: 1.25rem; stroke: currentColor; stroke-width: 2; fill: none; }
 
-/* File Types */
 .type-pdf { color: #ea4335; background-color: #fce8e6; }
 .type-xls { color: var(--green); background-color: #e6f4ea; }
 .type-doc { color: var(--primary); background-color: var(--bg-accent); }
 .type-img { color: #a142f4; background-color: #f3e8fd; }
 
-/* Row Text */
 .row-name {
     flex: 1;
     font-size: 0.85rem;
@@ -586,9 +590,8 @@ body {
     z-index: 2;
 }
 
-/* Row Actions */
 .row-actions {
-    width: 1.5rem; /* 24px */
+    width: 1.5rem; 
     height: 1.5rem;
     display: flex;
     align-items: center;
@@ -616,20 +619,18 @@ body {
 .success-icon { color: var(--green); }
 .error-icon { color: var(--red); }
 
-/* Status Logic */
 .upload-row.completed .success-icon { display: block; }
 .upload-row.completed .cancel-btn { display: none; }
 .upload-row.error .error-icon { display: block; }
 .upload-row.error .cancel-btn { display: none; }
 .upload-row.error .row-name { color: var(--red); }
 
-/* Progress Bar */
 .row-progress-track {
     position: absolute;
     bottom: 0;
     left: 0;
     right: 0;
-    height: 0.125rem; /* 2px */
+    height: 0.125rem; 
     background: transparent;
     z-index: 1;
 }
@@ -646,7 +647,6 @@ body {
     transition: opacity 0.5s;
 }
 
-/* --- ANIMATIONS --- */
 @keyframes popIn {
     0% { transform: scale(0); opacity: 0; }
     100% { transform: scale(1); opacity: 1; }
@@ -673,11 +673,10 @@ body {
     z-index: 1;
 }
 
-/* --- GLOBAL DROP OVERLAY (FIXED) --- */
+/* --- GLOBAL DROP OVERLAY --- */
 .fullscreen-drop-overlay {
     position: fixed;
     top: 0; left: 0; right: 0; bottom: 0;
-    /* Dropped the opacity from 0.95 to 0.6 for a nice glass effect */
     background: rgba(26, 115, 232, 0.6); 
     z-index: 9999;
     display: flex;
@@ -686,7 +685,6 @@ body {
     opacity: 0;
     pointer-events: none;
     transition: opacity 0.2s ease-in-out;
-    /* Increased the blur so the background isn't distracting */
     backdrop-filter: blur(8px); 
     -webkit-backdrop-filter: blur(8px);
 }
@@ -698,7 +696,6 @@ body {
 
 .fullscreen-drop-overlay .overlay-content {
     text-align: center;
-    /* Explicitly forcing white text and icon */
     color: #ffffff; 
     transform: scale(0.9);
     transition: transform 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
@@ -710,7 +707,6 @@ body {
 
 .fullscreen-drop-overlay svg {
     margin-bottom: 1rem;
-    /* Ensure the icon is white */
     stroke: #ffffff; 
 }
 
@@ -720,8 +716,94 @@ body {
     margin: 0;
 }
 
-.tree-empty-state {
-    color: var(--text-sub);
-    padding-left: 2rem;
-    font-style: italic;
+/* --- SMART MEDIA QUERY FOR MOBILE & LANDSCAPE --- */
+@media screen and (max-width: 768px), screen and (max-width: 1024px) and (max-height: 550px) {
+    
+    body {
+        padding: 0.5rem; 
+    }
+    
+    .app-container {
+        flex-direction: column;
+        gap: 0.75rem; 
+        height: calc(100dvh - 1rem); /* FIX 1: dVH here too */
+    }
+
+    .sidebar {
+        display: none; 
+    }
+
+    .main-content {
+        width: 100%;
+        gap: 0.75rem; 
+    }
+
+    .drop-zone-container {
+        height: auto; 
+        min-height: 4.5rem; 
+        flex-shrink: 0; 
+    }
+    
+    .zone-half {
+        padding: 0.5rem 0;
+    }
+
+    .zone-content {
+        padding: 0.5rem;
+    }
+
+    .zone-icon {
+        width: 2.25rem;
+        height: 2.25rem;
+        margin: 0 auto 0.25rem auto;
+    }
+    
+    .zone-icon svg {
+        width: 1.25rem;
+        height: 1.25rem;
+    }
+
+    .zone-content h3 {
+        font-size: 0.9rem;
+        margin: 0;
+    }
+
+    .zone-content p {
+        display: none; 
+    }
+
+    .zone-divider span {
+        padding: 0.15rem 0.35rem;
+        font-size: 0.65rem;
+    }
+
+    .browser-header {
+        padding: 0.75rem 1rem;
+        min-height: 3rem;
+    }
+
+    .col-date {
+        display: none; 
+    }
+    
+    .col-name {
+        padding-right: 0.5rem;
+    }
+
+    .file-list-header {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .tree-row {
+        padding: 0.5rem 0.75rem;
+    }
+
+    .upload-widget {
+        width: 100%;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        border-radius: 1rem 1rem 0 0; 
+        box-shadow: 0 -0.25rem 1rem rgba(0, 0, 0, 0.1); 
+    }
 }

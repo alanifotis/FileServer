@@ -38,5 +38,15 @@
     "name": "fileserver.allowed.hosts",
     "type": "java.lang.Array",
     "description": "Allowed origin hosts required for Webauthn Passkey Identification / Registration."
+  },
+  {
+    "name": "external.drive.uuid",
+    "type": "java.util.UUID",
+    "description": "UUID of the external storage where the files will be moved to."
+  },
+  {
+    "name": "external.file.name",
+    "type": "java.lang.String",
+    "description": "The filename containing the UUID value of the correct external drive."
   }
 ]}
