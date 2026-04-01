@@ -33,7 +33,7 @@ public class FileTransferService {
     private static final long THROTTLE_BYTES = 10 * 1024 * 1024;
 
     @Async
-    public void safelyTransferFile(PendingFileTransfer fileData, Path externalDriveRoot) {
+    public boolean safelyTransferFile(PendingFileTransfer fileData, Path externalDriveRoot) {
         
         String relativePath = fileData.originalUserId() + "/" + fileData.storagePath();
         Path sourcePath = Paths.get(localUploadRoot, relativePath).normalize();
@@ -42,7 +42,7 @@ public class FileTransferService {
         try {
             if (!Files.exists(sourcePath)) {
                 System.err.println("[SYNC WARN] Physical file missing for Blob ID " + fileData.id());
-                return; 
+                return false; 
             }
 
             Files.createDirectories(targetPath.getParent());
@@ -73,19 +73,21 @@ public class FileTransferService {
             if (!newHash.equalsIgnoreCase(fileData.sha256Hash())) {
                 System.err.println("[SYNC ERROR] Hash mismatch for Blob ID " + fileData.id());
                 Files.deleteIfExists(targetPath);
-                return;
+                return false;
             }
 
             int rowsUpdated = syncRepository.markAsTransferred(fileData.id(), StorageLocation.EXTERNAL_DRIVE_1TB);
 
             if (rowsUpdated > 0) {
                 Files.deleteIfExists(sourcePath);
+                return true;
             }
 
         } catch (Exception e) {
             System.err.println("[SYNC ERROR] Exception during transfer of Blob ID " + fileData.id() + ": " + e.getMessage());
-            try { Files.deleteIfExists(targetPath); } catch (Exception _) {}
+            try { Files.deleteIfExists(targetPath); } catch (Exception _) { return false; }
         }
+        return false;
     }
 
     private static String bytesToHex(byte[] bytes) {

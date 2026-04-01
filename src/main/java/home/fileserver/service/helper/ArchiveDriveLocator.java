@@ -79,7 +79,6 @@ public class ArchiveDriveLocator {
                     if (externalDriveUUID.equals(content)) {
                         Path verifiedRoot = root.toPath().resolve(this.uploadPath);
                         cachedDrivePath.set(verifiedRoot);
-                        log.info("PATH: {}", verifiedRoot.toString());
                         return verifiedRoot;
                     }
                 } catch (Exception ignored) {}
