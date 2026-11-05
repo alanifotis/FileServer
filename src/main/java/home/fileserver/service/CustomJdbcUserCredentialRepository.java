@@ -12,6 +12,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -114,9 +115,10 @@ public class CustomJdbcUserCredentialRepository implements UserCredentialReposit
         // 2. Flatten Transports
         String transports = null;
         if (record.getTransports() != null) {
-            transports = record.getTransports().stream()
-                    .map(AuthenticatorTransport::getValue)
-                    .collect(Collectors.joining(","));
+            transports = record.getTransports()
+            .stream()
+            .map(t -> Objects.requireNonNull(t).getValue())
+            .collect(Collectors.joining(","));
         }
 
         // 3. Create or Update Entity

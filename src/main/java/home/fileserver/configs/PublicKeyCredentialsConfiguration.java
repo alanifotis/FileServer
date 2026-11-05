@@ -30,7 +30,7 @@ public class PublicKeyCredentialsConfiguration {
             "https://192.168.0.149:8443", 
             "https://192.168.0.149:80", 
             "https://192.168.10.161:8443", 
-            "https://alanis-laptop.local:8443", 
+            "https://alanis-pc.local", 
             "https://192.168.0.149.nip.io:8443", 
             "https://fileserver.local", 
             "https://192.168.0.149.nip.io",

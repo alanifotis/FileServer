@@ -1,14 +1,5 @@
 package home.fileserver.service;
 
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.core.io.Resource;
-import org.springframework.core.io.UrlResource;
-import org.springframework.stereotype.Service;
-import org.springframework.web.multipart.MultipartFile;
-
-import home.fileserver.dto.FileItem;
-import lombok.extern.log4j.Log4j2;
-
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
@@ -21,9 +12,18 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.Date;
 import java.util.List;
+import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.stream.Collectors;
 import java.util.stream.Stream;
+
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.Resource;
+import org.springframework.core.io.UrlResource;
+import org.springframework.stereotype.Service;
+import org.springframework.web.multipart.MultipartFile;
+
+import home.fileserver.dto.FileItem;
+import lombok.extern.log4j.Log4j2;
 
 @Service
 @Log4j2
@@ -183,11 +183,11 @@ public class FileStorageService {
 
         try (Stream<Path> stream = Files.list(userFolder)) {
             return stream
-                    .map(path -> mapPathToFileItem(path))
-                    // Sort: Folders first, then Files by date (newest first)
-                    .sorted(Comparator.comparing(FileItem::isFolder).reversed()
-                            .thenComparing(FileItem::lastUpdated).reversed())
-                    .collect(Collectors.toList());
+                    .map(this::mapPathToFileItem)
+                    .sorted(Comparator
+                    .comparing((FileItem item) -> Objects.requireNonNull(item).isFolder(), Comparator.reverseOrder())
+                    .thenComparing((FileItem item) -> Objects.requireNonNull(item).lastUpdated(), Comparator.reverseOrder()))
+                    .toList();
         } catch (IOException e) {
             throw new RuntimeException("Failed to read user files", e);
         }

@@ -121,7 +121,7 @@ exceptionHandler.ui.form.addEventListener('submit', async (e) => {
     exceptionHandler.setLoading(true);
 
     if (isPathRegister) {
-        await registerWithoutPrf(email, headers);
+        await registerWithPrf(email, headers);
     } else {
         await automagic(headers);
     }

@@ -6,11 +6,9 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.stereotype.Repository;
 
 import home.fileserver.models.FileBlob;
 
-@Repository
 public interface FileBlobRepository extends JpaRepository<FileBlob, Long> {
     
     Optional<FileBlob> findBySha256HashAndSizeInBytes(String sha256Hash, long sizeInBytes);

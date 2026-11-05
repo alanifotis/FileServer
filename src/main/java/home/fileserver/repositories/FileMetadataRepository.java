@@ -10,13 +10,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import org.springframework.stereotype.Repository;
 
 import home.fileserver.models.FileCategory;
 import home.fileserver.models.FileMetadata;
 import home.fileserver.models.User;
 
-@Repository
 public interface FileMetadataRepository extends JpaRepository<FileMetadata, Long> {
     List<FileMetadata> findByParentIdAndIsTrashedFalse(Long parentId);
 
